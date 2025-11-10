@@ -1,0 +1,214 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="fas fa-tachometer-alt text-primary"></i> Panel de Administración</h2>
+            {% if usuario.rol == 'Administrador' %}
+            <div class="btn-group">
+                <a href="/admin/" class="btn btn-primary">
+                    <i class="fas fa-cog"></i> Admin Django
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="row">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                    Usuarios
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_usuarios }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-users fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                    Clientes
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_clientes }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-user-tie fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                    Productos
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_productos }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-warning shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                    Pedidos Hoy
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pedidos_hoy }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos con Stock Bajo -->
+        {% if productos_stock_bajo %}
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card border-danger shadow">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> ⚠️ Productos con Stock Bajo</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in productos_stock_bajo %}
+                                    <tr>
+                                        <td>{{ p.codigo }}</td>
+                                        <td>{{ p.nombre }}</td>
+                                        <td><span class="badge bg-danger">{{ p.stock }}</span></td>
+                                        <td>{{ p.stock_minimo }}</td>
+                                        <td>
+                                            <a href="{% url 'editar_producto' p.id %}" class="btn btn-sm btn-warning">
+                                                <i class="fas fa-edit"></i> Editar
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Acciones Rápidas -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="fas fa-bolt"></i> Acciones Rápidas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            {% if usuario.rol == 'Administrador' %}
+                            <a href="{% url 'listar_usuarios' %}" class="btn btn-outline-primary text-start">
+                                <i class="fas fa-user-cog"></i> Gestionar Usuarios
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'listar_productos' %}" class="btn btn-outline-info text-start">
+                                <i class="fas fa-box"></i> Gestionar Productos
+                            </a>
+                            {% if usuario.rol in 'Administrador' or usuario.rol in 'Vendedor' %}
+                            <a href="{% url 'listar_pedidos' %}" class="btn btn-outline-success text-start">
+                                <i class="fas fa-shopping-cart"></i> Gestionar Pedidos
+                            </a>
+                            <a href="{% url 'crear_pedido' %}" class="btn btn-outline-warning text-start">
+                                <i class="fas fa-plus-circle"></i> Crear Nuevo Pedido
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información del Sistema</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Usuario:</strong> {{ usuario.username }}</p>
+                        <p><strong>Rol:</strong> <span class="badge bg-primary">{{ usuario.rol }}</span></p>
+                        <p><strong>Email:</strong> {{ usuario.email }}</p>
+                        <p><strong>Último acceso:</strong> {{ usuario.last_login|date:"d/m/Y H:i"|default:"Primer acceso" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mensaje de Bienvenida -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card border-success shadow">
+                    <div class="card-body text-center">
+                        <h4 class="text-success">¡Bienvenido a TicaShop LATAM! 🎉</h4>
+                        <p class="mb-0">El sistema está funcionando correctamente. Comienza gestionando tus usuarios, clientes y productos.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .border-left-primary {
+        border-left: 4px solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 4px solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 4px solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 4px solid #f6c23e !important;
+    }
+    .d-grid {
+        display: grid;
+    }
+    .gap-2 {
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}

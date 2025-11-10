@@ -1,0 +1,122 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-file-invoice text-info"></i> Detalle del Pedido #{{ pedido.id }}</h2>
+        <a href="{% url 'listar_pedidos' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <!-- Información del Pedido -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información General</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Pedido #:</strong> {{ pedido.id }}</p>
+                    <p><strong>Cliente:</strong> {{ pedido.cliente.razon_social }}</p>
+                    <p><strong>RUT:</strong> {{ pedido.cliente.rut }}</p>
+                    <p><strong>Vendedor:</strong> {{ pedido.usuario.username }}</p>
+                    <p><strong>Fecha Creación:</strong> {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Estado:</strong> 
+                        {% if pedido.estado == 'Pendiente' %}
+                            <span class="badge bg-warning text-dark">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Procesando' %}
+                            <span class="badge bg-info">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Enviado' %}
+                            <span class="badge bg-primary">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Completado' %}
+                            <span class="badge bg-success">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Cancelado' %}
+                            <span class="badge bg-danger">{{ pedido.estado }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-dollar-sign"></i> Resumen Financiero</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Subtotal:</strong> ${{ pedido.total|floatformat:0 }}</p>
+                    <p><strong>IVA (19%):</strong> ${{ pedido.total|floatformat:0|add:"0.19"|floatformat:0 }}</p>
+                    <hr>
+                    <h4><strong>Total:</strong> <span class="text-success">${{ pedido.total|floatformat:0 }}</span></h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Productos del Pedido -->
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Productos del Pedido</h5>
+        </div>
+        <div class="card-body">
+            {% if detalles %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Precio Unitario</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detalle in detalles %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ detalle.producto.codigo }}</td>
+                            <td>{{ detalle.producto.nombre }}</td>
+                            <td>${{ detalle.precio_unitario_venta|floatformat:0 }}</td>
+                            <td>{{ detalle.cantidad }}</td>
+                            <td><strong>${{ detalle.subtotal|floatformat:0 }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-success">
+                            <td colspan="5" class="text-end"><strong>TOTAL:</strong></td>
+                            <td><strong>${{ pedido.total|floatformat:0 }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-warning text-center">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>
+                Este pedido no tiene productos.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="card shadow mt-4">
+        <div class="card-body text-center">
+            {% if pedido.estado == 'Pendiente' %}
+            <a href="{% url 'agregar_productos_pedido' pedido.id %}" class="btn btn-warning btn-lg me-2">
+                <i class="fas fa-edit"></i> Editar Pedido
+            </a>
+            <a href="{% url 'confirmar_pedido' pedido.id %}" class="btn btn-success btn-lg">
+                <i class="fas fa-check-circle"></i> Confirmar Pedido
+            </a>
+            {% elif pedido.estado == 'Procesando' %}
+            <button class="btn btn-info btn-lg" disabled>
+                <i class="fas fa-check"></i> Pedido en Proceso
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
