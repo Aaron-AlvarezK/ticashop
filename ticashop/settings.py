@@ -18,8 +18,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    # Third party
+    'django.contrib.humanize',    
     'crispy_forms',
     'crispy_bootstrap5',
     
@@ -104,6 +103,5 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # URLs de redirección de login
-LOGIN_REDIRECT_URL = 'dashboard'
-LOGIN_URL = 'login'
-LOGOUT_REDIRECT_URL = 'login'
+LOGIN_REDIRECT_URL = '/usuarios/dashboard/'
+LOGOUT_REDIRECT_URL = '/usuarios/login/'

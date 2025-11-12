@@ -24,7 +24,7 @@ class DocumentoVenta(models.Model):
     
     # Información del documento
     tipo_documento = models.CharField(max_length=7, choices=TIPOS_DOCUMENTO)
-    folio = models.IntegerField(verbose_name='Folio')
+    folio = models.IntegerField(verbose_name='Folio', null=True, blank=True)  # ✅ Permitir null temporalmente
     
     # Relaciones
     cliente = models.ForeignKey(
@@ -74,8 +74,27 @@ class DocumentoVenta(models.Model):
         verbose_name='Medio de pago'
     )
     
+    # 🧾 Datos adicionales para Factura (opcionales)
+    razon_social = models.CharField(max_length=255, blank=True, null=True)
+    rut = models.CharField(max_length=20, blank=True, null=True)
+    giro = models.CharField(max_length=255, blank=True, null=True)
+    direccion = models.CharField(max_length=255, blank=True, null=True)
+    ciudad = models.CharField(max_length=100, blank=True, null=True)
+    comuna = models.CharField(max_length=100, blank=True, null=True)
+    
+    def save(self, *args, **kwargs):
+        """Genera folio automático por tipo de documento antes de guardar"""
+        if not self.folio:
+            ultimo = DocumentoVenta.objects.filter(tipo_documento=self.tipo_documento).order_by('-folio').first()
+            if ultimo and ultimo.folio:
+                self.folio = ultimo.folio + 1
+            else:
+                # Primera vez para cada tipo (comienzas en 1000)
+                self.folio = 1000
+        super().save(*args, **kwargs)
+    
     def __str__(self):
-        return f"{self.tipo_documento} #{self.folio} - {self.cliente.razon_social}"
+        return f"{self.tipo_documento} #{self.folio} - {self.cliente.razon_social if self.cliente else 'Sin cliente'}"
     
     @property
     def saldo_pendiente(self):
@@ -112,6 +131,7 @@ class DocumentoVenta(models.Model):
         verbose_name_plural = 'Documentos de Venta'
         unique_together = ['tipo_documento', 'folio']
         ordering = ['-fecha_emision']
+
 
 class DetalleDocumento(models.Model):
     documento = models.ForeignKey(
@@ -160,6 +180,7 @@ class DetalleDocumento(models.Model):
         db_table = 'detalle_documento'
         verbose_name = 'Detalle de Documento'
         verbose_name_plural = 'Detalles de Documento'
+
 
 class Pago(models.Model):
     documento = models.ForeignKey(

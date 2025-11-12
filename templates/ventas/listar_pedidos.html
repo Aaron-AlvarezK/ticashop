@@ -4,7 +4,7 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-shopping-cart text-primary"></i> Gestión de Pedidos</h2>
-        <a href="{% url 'crear_pedido' %}" class="btn btn-success">
+        <a href="{% url 'crear_pedido_datos' %}" class="btn btn-success">
             <i class="fas fa-plus"></i> Nuevo Pedido
         </a>
     </div>
@@ -72,7 +72,7 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 {% if pedido.estado == 'Pendiente' %}
-                                    <a href="{% url 'agregar_productos_pedido' pedido.id %}" class="btn btn-sm btn-warning" title="Agregar productos">
+                                    <a href="{% url 'crear_pedido_datos' %}" class="btn btn-sm btn-warning" title="Agregar productos o generar documento">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                 {% endif %}

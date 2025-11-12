@@ -27,7 +27,7 @@ class Pedido(models.Model):
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     estado = models.CharField(
-        max_length=10, 
+        max_length=20, 
         choices=ESTADOS_PEDIDO, 
         default='Pendiente'
     )

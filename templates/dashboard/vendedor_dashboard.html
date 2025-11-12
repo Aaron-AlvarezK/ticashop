@@ -1,16 +1,59 @@
 {% extends 'dashboard/base_dashboard.html' %}
-
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h2><i class="fas fa-tachometer-alt text-primary"></i> Panel de Vendedor</h2>
-        <div class="card mt-4">
-            <div class="card-body text-center">
-                <h4 class="text-primary">¡Hola {{ usuario.username }}! 🎉</h4>
-                <p>Panel de vendedor funcionando correctamente.</p>
-                <p><strong>Rol:</strong> {{ usuario.rol }}</p>
+<div class="container-fluid mt-3">
+    <h2><i class="fas fa-store text-success"></i> Panel de Vendedor</h2>
+
+    <div class="row mt-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm text-center border-top border-success border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">CLIENTES</h6>
+                    <h3 class="fw-bold">{{ total_clientes }}</h3>
+                    <i class="fas fa-user fa-2x text-success"></i>
+                </div>
             </div>
         </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm text-center border-top border-info border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">PRODUCTOS ACTIVOS</h6>
+                    <h3 class="fw-bold">{{ total_productos }}</h3>
+                    <i class="fas fa-boxes fa-2x text-info"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm text-center border-top border-warning border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">MIS PEDIDOS HOY</h6>
+                    <h3 class="fw-bold">{{ pedidos_hoy }}</h3>
+                    <i class="fas fa-shopping-cart fa-2x text-warning"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="card shadow mt-3">
+        <div class="card-header bg-success text-white">
+            <i class="fas fa-bolt"></i> Acciones Rápidas
+        </div>
+        <div class="card-body">
+            <a href="{% url 'listar_pedidos' %}" class="btn btn-outline-success m-1">
+                <i class="fas fa-cart-arrow-down"></i> Mis Pedidos
+            </a>
+            <a href="{% url 'crear_pedido' %}" class="btn btn-outline-primary m-1">
+                <i class="fas fa-plus-circle"></i> Nuevo Pedido
+            </a>
+            <a href="{% url 'listar_productos' %}" class="btn btn-outline-dark m-1">
+                <i class="fas fa-box-open"></i> Ver Productos
+            </a>
+        </div>
+    </div>
+
+    <div class="alert alert-success mt-4 text-center">
+        <h5>¡Bienvenido a tu panel de ventas, <strong>{{ request.user.username }}</strong> 💼!</h5>
+        <p>Gestiona tus clientes, revisa tus productos y registra nuevos pedidos fácilmente.</p>
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,18 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-truck text-primary"></i> {{ form.instance.id|yesno:"Editar Proveedor,Crear Proveedor" }}</h2>
+    <form method="POST" class="card p-4 shadow-sm">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="text-end">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+            <a href="{% url 'listar_proveedores' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

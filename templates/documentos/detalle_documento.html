@@ -1,0 +1,103 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load documentos_extras %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2><i class="fas fa-file-invoice text-primary"></i> {{ documento.tipo_documento }} #{{ documento.folio }}</h2>
+    <hr>
+
+    <!-- Datos cliente -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-user"></i> Cliente
+                </div>
+                <div class="card-body">
+                    <p><strong>Nombre / Razón social:</strong> {{ documento.cliente.nombre }}</p>
+                    <p><strong>RUT:</strong> {{ documento.cliente.rut }}</p>
+                    <p><strong>Correo:</strong> {{ documento.cliente.email }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    <i class="fas fa-info-circle"></i> Detalle del Documento
+                </div>
+                <div class="card-body">
+                    <p><strong>Folio:</strong> {{ documento.folio }}</p>
+                    <p><strong>Tipo:</strong> {{ documento.tipo_documento }}</p>
+                    <p><strong>Estado:</strong> {{ documento.estado }}</p>
+                    {% if documento.fecha_vencimiento %}
+                        <p><strong>Vencimiento:</strong> {{ documento.fecha_vencimiento|date:"d/m/Y" }}</p>
+                    {% endif %}
+                    <p><strong>Vendedor:</strong> {{ documento.vendedor.username }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Productos -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-box"></i> Productos Vendidos
+        </div>
+        <div class="card-body">
+            {% if documento.detalles.exists %}
+            <table class="table table-bordered table-sm table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-end">Precio Unitario</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in documento.detalles.all %}
+                    <tr>
+                        <td>{{ detalle.producto.nombre }}</td>
+                        <td class="text-center">{{ detalle.cantidad }}</td>
+                        <td class="text-end">${{ detalle.precio_unitario_venta|floatformat:0 }}</td>
+                        <td class="text-end">
+                            ${{ detalle.cantidad|mul:detalle.precio_unitario_venta|floatformat:0 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="table-active">
+                        <td colspan="3" class="text-end"><strong>Neto:</strong></td>
+                        <td class="text-end">${{ documento.neto|floatformat:0 }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" class="text-end"><strong>IVA (19%):</strong></td>
+                        <td class="text-end">${{ documento.iva|floatformat:0 }}</td>
+                    </tr>
+                    <tr class="table-primary">
+                        <td colspan="3" class="text-end text-primary"><strong>Total:</strong></td>
+                        <td class="text-end text-primary"><strong>${{ documento.total|floatformat:0 }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% else %}
+                <p class="text-muted">No se encontraron productos asociados.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="d-flex justify-content-between">
+        <a href="{% url 'listar_pedidos' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Pedidos
+        </a>
+
+        <button onclick="window.print()" class="btn btn-success">
+            <i class="fas fa-print"></i> Imprimir
+        </button>
+    </div>
+</div>
+{% endblock %}

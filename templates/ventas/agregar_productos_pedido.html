@@ -1,143 +1,106 @@
 {% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
 {% block content %}
+
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="fas fa-cart-plus text-success"></i> Agregar Productos al Pedido #{{ pedido.id }}</h2>
-        <a href="{% url 'listar_pedidos' %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Volver
-        </a>
-    </div>
+    <h2><i class="fas fa-box-open text-success"></i> Agregar productos al Pedido #{{ pedido.id }}</h2>
+    <p class="text-muted">Documento: <strong>{{ tipo_documento }}</strong> | Cliente: <strong>{{ pedido.cliente }}</strong></p>
+    <hr>
 
-    <!-- Información del Pedido -->
-    <div class="card shadow mb-4">
-        <div class="card-header bg-info text-white">
-            <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información del Pedido</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <p><strong>Cliente:</strong> {{ pedido.cliente.razon_social }}</p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Vendedor:</strong> {{ pedido.usuario.username }}</p>
-                </div>
-                <div class="col-md-4">
-                    <p><strong>Total:</strong> <span class="badge bg-success fs-5">${{ pedido.total|floatformat:0 }}</span></p>
-                </div>
+    <!-- Mensajes -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-        </div>
-    </div>
+        {% endfor %}
+    {% endif %}
 
-    <!-- Formulario para Agregar Productos -->
-    <div class="card shadow mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Agregar Producto</h5>
+    <!-- Agregar producto -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+            <i class="fas fa-cart-plus"></i> Agregar producto al pedido
         </div>
         <div class="card-body">
-            <form method="POST">
+            <form method="post" class="row g-3">
                 {% csrf_token %}
-                <div class="row">
-                    <div class="col-md-6">
-                        <label for="producto" class="form-label">Producto</label>
-                        <select name="producto" id="producto" class="form-select" required>
-                            <option value="">Seleccione un producto...</option>
-                            {% for p in productos %}
-                            <option value="{{ p.id }}" data-stock="{{ p.stock }}" data-precio="{{ p.precio_unitario }}">
-                                {{ p.nombre }} - Stock: {{ p.stock }} - ${{ p.precio_unitario|floatformat:0 }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="cantidad" class="form-label">Cantidad</label>
-                        <input type="number" name="cantidad" id="cantidad" class="form-control" min="1" required>
-                        <small id="stock-info" class="text-muted"></small>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-plus"></i> Agregar
-                        </button>
-                    </div>
+                <div class="col-md-6">
+                    <label class="form-label">Producto:</label>
+                    <select name="producto_id" class="form-select" required>
+                        <option value="" selected disabled>-- Seleccione un producto --</option>
+                        {% for p in productos %}
+                            <option value="{{ p.id }}">{{ p.nombre }} (Stock: {{ p.stock }}) - ${{ p.precio_unitario }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Cantidad:</label>
+                    <input type="number" name="cantidad" value="1" min="1" class="form-control" required>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-plus-circle"></i> Agregar
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Productos Agregados -->
-    <div class="card shadow mb-4">
-        <div class="card-header bg-dark text-white">
-            <h5 class="mb-0"><i class="fas fa-list"></i> Productos en el Pedido</h5>
+    <!-- Carrito de productos -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <i class="fas fa-list"></i> Productos agregados
         </div>
         <div class="card-body">
-            {% if detalles %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
+            {% if carrito %}
+                <table class="table table-bordered table-striped">
+                    <thead class="table-dark">
                         <tr>
                             <th>Producto</th>
-                            <th>Precio Unitario</th>
-                            <th>Cantidad</th>
-                            <th>Subtotal</th>
-                            <th>Acciones</th>
+                            <th class="text-center">Cantidad</th>
+                            <th class="text-end">Precio</th>
+                            <th class="text-end">Subtotal</th>
+                            <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for detalle in detalles %}
-                        <tr>
-                            <td>{{ detalle.producto.nombre }}</td>
-                            <td>${{ detalle.precio_unitario_venta|floatformat:0 }}</td>
-                            <td>{{ detalle.cantidad }}</td>
-                            <td>${{ detalle.subtotal|floatformat:0 }}</td>
-                            <td>
-                                <a href="{% url 'eliminar_producto_pedido' detalle.id %}" 
-                                   class="btn btn-sm btn-danger"
-                                   onclick="return confirm('¿Eliminar este producto del pedido?')">
-                                    <i class="fas fa-trash"></i>
-                                </a>
-                            </td>
-                        </tr>
+                        {% for item in carrito %}
+                            <tr>
+                                <td>{{ item.nombre }}</td>
+                                <td class="text-center">{{ item.cantidad }}</td>
+                                <td class="text-end">${{ item.precio }}</td>
+                                <td class="text-end">${{ item.subtotal }}</td>
+                                <td class="text-center">
+                                    <a href="{% url 'eliminar_producto_carrito' pedido.id item.producto_id %}" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </td>
+                            </tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot>
-                        <tr class="table-success">
-                            <td colspan="3" class="text-end"><strong>TOTAL:</strong></td>
-                            <td colspan="2"><strong>${{ pedido.total|floatformat:0 }}</strong></td>
-                        </tr>
-                    </tfoot>
                 </table>
-            </div>
-            
-            <div class="text-end mt-3">
-                <a href="{% url 'confirmar_pedido' pedido.id %}" class="btn btn-success btn-lg">
-                    <i class="fas fa-check-circle"></i> Confirmar Pedido
-                </a>
-            </div>
+                <div class="text-end">
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" name="confirmar_pedido" class="btn btn-primary">
+                            <i class="fas fa-check-circle"></i> Confirmar y generar {{ tipo_documento }}
+                        </button>
+                    </form>
+                </div>
             {% else %}
-            <div class="alert alert-warning text-center">
-                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i><br>
-                No hay productos agregados al pedido.
-            </div>
+                <p class="text-muted">No hay productos agregados.</p>
             {% endif %}
         </div>
     </div>
+
+    <!-- Volver -->
+    <div class="text-end">
+        <a href="{% url 'listar_pedidos' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a pedidos
+        </a>
+    </div>
+
 </div>
 
-<script>
-    // Mostrar stock disponible al seleccionar producto
-    document.getElementById('producto').addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const stock = selectedOption.getAttribute('data-stock');
-        const stockInfo = document.getElementById('stock-info');
-        const cantidadInput = document.getElementById('cantidad');
-        
-        if (stock) {
-            stockInfo.textContent = `Stock disponible: ${stock}`;
-            cantidadInput.max = stock;
-            cantidadInput.value = 1;
-        } else {
-            stockInfo.textContent = '';
-            cantidadInput.max = '';
-        }
-    });
-</script>
 {% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid mt-4">
+    <h2><i class="fas fa-file-invoice text-primary"></i> Crear nuevo Pedido</h2>
+    <hr>
+
+    <!-- Mensajes del sistema -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <strong>Datos del Pedido y Documento</strong>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Cliente:</label>
+                        {{ pedido_form.cliente }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tipo de documento:</label>
+                        {{ tipo_form.tipo_documento }}
+                    </div>
+                </div>
+
+                <!-- BOLETA -->
+                <div id="boleta-fields" style="display:none;">
+                    <h5 class="text-secondary">Datos de Boleta</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Medio de pago:</label>
+                            {{ boleta_form.medio_de_pago }}
+                        </div>
+                    </div>
+                </div>
+
+                <div id="factura-fields" style="display:none;">
+                    <h5 class="text-secondary">Datos de Factura</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Razón Social</label>
+                            {{ factura_form.razon_social }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">RUT</label>
+                            {{ factura_form.rut }}
+                            <small class="text-muted">{{ factura_form.rut.help_text }}</small>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Giro Comercial</label>
+                            {{ factura_form.giro }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dirección</label>
+                            {{ factura_form.direccion }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ciudad</label>
+                            {{ factura_form.ciudad }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Comuna</label>
+                            {{ factura_form.comuna }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Medio de pago</label>
+                            {{ factura_form.medio_de_pago }}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Fecha de emisión</label>
+                            {{ factura_form.fecha_emision }}
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Fecha de vencimiento</label>
+                            {{ factura_form.fecha_vencimiento }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <a href="{% url 'listar_pedidos' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> Continuar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Mostrar/ocultar campos según tipo de documento
+    const tipoSelect = document.getElementById("id_tipo_documento");
+    const boletaFields = document.getElementById("boleta-fields");
+    const facturaFields = document.getElementById("factura-fields");
+
+    function actualizarCampos() {
+        const tipo = tipoSelect.value;
+        boletaFields.style.display = tipo === "Boleta" ? "block" : "none";
+        facturaFields.style.display = tipo === "Factura" ? "block" : "none";
+    }
+
+    tipoSelect.addEventListener("change", actualizarCampos);
+    window.addEventListener("load", actualizarCampos);
+</script>
+{% endblock %}
