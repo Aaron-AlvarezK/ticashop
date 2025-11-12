@@ -1,15 +1,19 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db import transaction
+from django.db import transaction, models
 from decimal import Decimal
 from datetime import date
 
-from .models import Pedido, DetallePedido
-from .forms import PedidoForm, TipoDocumentoForm, BoletaForm, FacturaForm
+from apps.ventas.models import Pedido, DetallePedido
+from apps.ventas.forms import PedidoForm, TipoDocumentoForm, BoletaForm, FacturaForm
 from apps.productos.models import Producto
 from apps.documentos.models import DocumentoVenta, DetalleDocumento
 
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+from django.db.models import Sum, Count
 
 # =========================
 # LISTAR PEDIDOS
@@ -43,10 +47,9 @@ def crear_pedido_datos(request):
     if request.method == 'POST':
         pedido_form = PedidoForm(request.POST)
         tipo_form = TipoDocumentoForm(request.POST)
-
         tipo_documento = request.POST.get('tipo_documento')
-        
-        # Determinar qué formulario usar según el tipo de documento
+
+        # Inicializar el formulario correcto según tipo_documento
         if tipo_documento == 'Boleta':
             doc_form = BoletaForm(request.POST)
         elif tipo_documento == 'Factura':
@@ -54,19 +57,29 @@ def crear_pedido_datos(request):
         else:
             doc_form = None
 
-        if pedido_form.is_valid() and tipo_form.is_valid() and (doc_form and doc_form.is_valid()):
-            # Crear el pedido (sin productos todavía)
-            pedido = pedido_form.save(commit=False)
-            pedido.usuario = request.user
-            pedido.save()
+        # Validación principal
+        if pedido_form.is_valid() and tipo_form.is_valid():
+            # Validar también formulario de documento si corresponde
+            if tipo_documento == 'Boleta' and doc_form.is_valid():
+                pedido = pedido_form.save(commit=False)
+                pedido.usuario = request.user
+                pedido.save()
 
-            # ✅ AQUÍ VA EL CÓDIGO: Guardar datos del documento en sesión
-            if tipo_documento == 'Boleta':
+                # Guardar datos en sesión solo para Boleta
                 request.session['pedido_temp_data'] = {
                     'tipo_documento': tipo_documento,
                     'medio_de_pago': doc_form.cleaned_data.get('medio_de_pago'),
                 }
-            else:  # Factura
+
+                messages.success(request, f'Pedido #{pedido.id} creado. Ahora agregue productos.')
+                return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+
+            elif tipo_documento == 'Factura' and doc_form.is_valid():
+                pedido = pedido_form.save(commit=False)
+                pedido.usuario = request.user
+                pedido.save()
+
+                # Guardar datos en sesión para Factura
                 request.session['pedido_temp_data'] = {
                     'tipo_documento': tipo_documento,
                     'medio_de_pago': doc_form.cleaned_data.get('medio_de_pago'),
@@ -80,10 +93,14 @@ def crear_pedido_datos(request):
                     'comuna': doc_form.cleaned_data.get('comuna'),
                 }
 
-            messages.success(request, f'Pedido #{pedido.id} creado. Ahora agregue productos.')
-            return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+                messages.success(request, f'Pedido #{pedido.id} creado. Ahora agregue productos.')
+                return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+
+            else:
+                messages.error(request, 'Por favor complete correctamente los datos del documento seleccionado.')
         else:
             messages.error(request, 'Por favor corrija los errores en el formulario.')
+
     else:
         pedido_form = PedidoForm()
         tipo_form = TipoDocumentoForm()
@@ -96,151 +113,108 @@ def crear_pedido_datos(request):
         'boleta_form': boleta_form,
         'factura_form': factura_form,
     }
-
     return render(request, 'ventas/crear_pedido_datos.html', context)
+
+
+# =========================
+# PASO 2: AGREGAR PRODUCTOS AL PEDIDO
+# =========================
 
 @login_required
 def agregar_productos_pedido(request, pedido_id):
-    """Segunda etapa: añadir productos al pedido"""
     pedido = get_object_or_404(Pedido, id=pedido_id)
-    pedido_temp = request.session.get('pedido_temp_data')
 
-    if not pedido_temp:
-        messages.error(request, 'Debe completar los datos del documento antes de agregar productos.')
-        return redirect('crear_pedido_datos')
-
+    # Productos activos disponibles
     productos = Producto.objects.filter(activo=True).order_by('nombre')
+    
+    # Detalles actuales del pedido
     detalles = DetallePedido.objects.filter(pedido=pedido)
 
-    if request.method == 'POST':
-        # =============================
-        # Confirmar pedido y generar documento
-        # =============================
-        if 'confirmar_pedido' in request.POST:
-            if not detalles.exists():
-                messages.error(request, 'Debe agregar al menos un producto antes de confirmar.')
-                return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+    # Generar carrito con los productos ya agregados
+    carrito = [{
+        'producto_id': d.producto.id,
+        'nombre': d.producto.nombre,
+        'cantidad': d.cantidad,
+        'precio': d.precio_unitario_venta,
+        'subtotal': d.subtotal
+    } for d in detalles]
 
-            try:
-                with transaction.atomic():
-                    # 🔍 Verificar stock suficiente antes de descontar
-                    for detalle in detalles:
-                        producto = detalle.producto
-                        if detalle.cantidad > producto.stock:
-                            raise ValueError(f"No hay suficiente stock de {producto.nombre} (Stock: {producto.stock})")
+    # Variable para mostrar errores en el template
+    mensaje_error = None
 
-                    # 🔻 Descontar stock de cada producto
-                    for detalle in detalles:
-                        producto = detalle.producto
-                        producto.stock -= detalle.cantidad
-                        producto.save()
+    # Obtener tipo de documento desde la sesión (si existe)
+    pedido_temp = request.session.get('pedido_temp', {})
+    tipo_documento = pedido_temp.get('tipo_documento', 'No especificado')
 
-                    # 💰 Calcular totales
-                    subtotal = sum(detalle.cantidad * detalle.precio_unitario_venta for detalle in detalles)
-                    iva = subtotal * Decimal('0.19')  # IVA 19%
-                    total = subtotal + iva
+    # Procesar POST: Agregar producto
+    if request.method == "POST" and "producto_id" in request.POST:
+        producto_id = request.POST.get("producto_id")
+        cantidad = int(request.POST.get("cantidad", 1))
 
-                    # 🧾 Crear documento de venta
-                    tipo_documento = pedido_temp.get('tipo_documento', 'Boleta')
-                    
-                    documento = DocumentoVenta.objects.create(
-                        pedido=pedido,
-                        tipo_documento=tipo_documento,
-                        cliente=pedido.cliente,
-                        vendedor=request.user,
-                        medio_de_pago=pedido_temp.get('medio_de_pago', ''),
-                        neto=subtotal,
-                        iva=iva,
-                        total=total,
-                        fecha_vencimiento=pedido_temp.get('fecha_vencimiento') if tipo_documento == 'Factura' else None,
-                        razon_social=pedido_temp.get('razon_social', '') if tipo_documento == 'Factura' else '',
-                        rut=pedido_temp.get('rut', '') if tipo_documento == 'Factura' else '',
-                        giro=pedido_temp.get('giro', '') if tipo_documento == 'Factura' else '',
-                        direccion=pedido_temp.get('direccion', '') if tipo_documento == 'Factura' else '',
-                        ciudad=pedido_temp.get('ciudad', '') if tipo_documento == 'Factura' else '',
-                        comuna=pedido_temp.get('comuna', '') if tipo_documento == 'Factura' else '',
-                        estado='Pagada' if tipo_documento == 'Boleta' else 'Emitida'
-                    )
-
-                    # 📦 Crear detalles del documento
-                    for detalle in detalles:
-                        DetalleDocumento.objects.create(
-                            documento=documento,
-                            producto=detalle.producto,
-                            cantidad=detalle.cantidad,
-                            precio_unitario_venta=detalle.precio_unitario_venta,
-                            costo_unitario_venta=detalle.producto.costo_unitario
-                        )
-
-                    # ✅ Actualizar estado del pedido
-                    pedido.estado = 'Procesando'
-                    pedido.save()
-
-                    # 💾 Limpiar datos temporales de sesión
-                    if 'pedido_temp_data' in request.session:
-                        del request.session['pedido_temp_data']
-
-                    messages.success(request, f'Pedido #{pedido.id} y {documento.tipo_documento} #{documento.folio} creados exitosamente.')
-                    return redirect('detalle_pedido', pedido_id=pedido.id)
-
-            except ValueError as e:
-                messages.error(request, str(e))
-            except Exception as e:
-                messages.error(request, f'Error al generar el pedido: {str(e)}')
-                print(e)
-
-        # =============================
-        # Agregar producto al pedido (GUARDAR EN BD)
-        # =============================
-        else:
-            producto_id = request.POST.get('producto_id')
-            cantidad = int(request.POST.get('cantidad', 1))
+        try:
             producto = get_object_or_404(Producto, id=producto_id)
 
-            if producto.stock < cantidad:
-                messages.error(request, f'Stock insuficiente. Disponible: {producto.stock}')
+            # Calcular cuántos ya tiene en el pedido
+            cantidad_actual = DetallePedido.objects.filter(
+                pedido=pedido, 
+                producto=producto
+            ).aggregate(total=models.Sum('cantidad'))['total'] or 0
+
+            cantidad_total_solicitada = cantidad_actual + cantidad
+
+            # Validar stock disponible
+            if producto.stock < cantidad_total_solicitada:
+                mensaje_error = (
+                    f"⚠️ Stock insuficiente para {producto.nombre}. "
+                    f"Solicitado: {cantidad_total_solicitada} | "
+                    f"Disponible: {producto.stock} | "
+                    f"Ya tienes {cantidad_actual} en el pedido."
+                )
             else:
-                # ✅ Crear o actualizar DetallePedido en la base de datos
-                detalle, created = DetallePedido.objects.get_or_create(
+                # Crear detalle del pedido
+                DetallePedido.objects.create(
                     pedido=pedido,
                     producto=producto,
-                    defaults={
-                        'cantidad': cantidad,
-                        'precio_unitario_venta': producto.precio_unitario,
-                        'subtotal': cantidad * producto.precio_unitario
-                    }
+                    cantidad=cantidad,
+                    precio_unitario_venta=producto.precio_unitario
                 )
 
-                if not created:
-                    # Si ya existe, sumar la cantidad
-                    detalle.cantidad += cantidad
-                    detalle.subtotal = detalle.cantidad * detalle.precio_unitario_venta
-                    detalle.save()
+                # Descontar stock
+                producto.stock -= cantidad
+                producto.save()
 
-                messages.success(request, f'{producto.nombre} agregado al pedido.')
+                messages.success(
+                    request, 
+                    f"✅ {producto.nombre} agregado correctamente al pedido #{pedido.id}."
+                )
+                return redirect('agregar_productos_pedido', pedido_id=pedido.id)
 
+        except Exception as e:
+            mensaje_error = f"❌ Error al agregar el producto: {str(e)}"
+
+    # Procesar POST: Confirmar pedido
+    if request.method == "POST" and "confirmar_pedido" in request.POST:
+        if not detalles.exists():
+            messages.warning(request, "⚠️ No puedes confirmar un pedido sin productos.")
             return redirect('agregar_productos_pedido', pedido_id=pedido.id)
 
-    # Preparar carrito para mostrar en template
-    carrito = []
-    for detalle in detalles:
-        carrito.append({
-            'producto_id': detalle.producto.id,
-            'nombre': detalle.producto.nombre,
-            'cantidad': detalle.cantidad,
-            'precio': detalle.precio_unitario_venta,
-            'subtotal': detalle.subtotal,
-        })
+        # Cambiar estado del pedido
+        pedido.estado = 'Procesando'
+        pedido.save()
 
+        messages.success(request, f"✅ Pedido #{pedido.id} confirmado correctamente.")
+        return redirect('detalle_pedido', pedido_id=pedido.id)
+
+    # Contexto para el template
     context = {
         'pedido': pedido,
-        'productos': productos,
         'carrito': carrito,
-        'tipo_documento': pedido_temp.get('tipo_documento'),
+        'productos': productos,
+        'tipo_documento': tipo_documento,
+        'mensaje_error': mensaje_error,
     }
 
     return render(request, 'ventas/agregar_productos_pedido.html', context)
-
 # =========================
 # ELIMINAR PRODUCTO DEL CARRITO
 # =========================
@@ -282,6 +256,10 @@ def detalle_pedido(request, pedido_id):
     }
     return render(request, 'ventas/detalle_pedido.html', context)
 
+
+# =========================
+# CONFIRMAR PEDIDO
+# =========================
 @login_required
 def confirmar_pedido(request, pedido_id):
     pedido = get_object_or_404(Pedido, id=pedido_id)
@@ -299,13 +277,20 @@ def confirmar_pedido(request, pedido_id):
     datos_doc = request.session.get('pedido_temp_data', {})
 
     try:
-        with transaction.atomic():  # ✅ Asegura que todo se haga o nada se haga
-
+        with transaction.atomic():
             # 🔍 Verificar stock suficiente antes de descontar
+            productos_sin_stock = []
             for detalle in detalles:
                 producto = detalle.producto
                 if detalle.cantidad > producto.stock:
-                    raise ValueError(f"No hay suficiente stock de {producto.nombre} (Stock: {producto.stock})")
+                    productos_sin_stock.append(
+                        f"{producto.nombre} (Solicitado: {detalle.cantidad}, Disponible: {producto.stock})"
+                    )
+
+            if productos_sin_stock:
+                mensaje_error = "⚠️ No hay suficiente stock para los siguientes productos:\n" + "\n".join(productos_sin_stock)
+                messages.error(request, mensaje_error)
+                return redirect('detalle_pedido', pedido_id=pedido.id)
 
             # 🔻 Descontar stock de cada producto
             for detalle in detalles:
@@ -315,7 +300,7 @@ def confirmar_pedido(request, pedido_id):
 
             # 💰 Calcular totales
             subtotal = sum(detalle.cantidad * detalle.producto.precio_unitario for detalle in detalles)
-            iva = subtotal * Decimal('0.19')  # IVA 19%
+            iva = subtotal * Decimal('0.19')
             total = subtotal + iva
 
             # 🧾 Crear documento de venta
@@ -359,16 +344,16 @@ def confirmar_pedido(request, pedido_id):
 
             messages.success(request, f'El Pedido #{pedido.id} ha sido confirmado. Documento {tipo_documento} #{documento.folio} generado correctamente.')
 
-    except ValueError as e:
-        # ❌ Si algo falla, no se confirma el pedido
-        messages.error(request, str(e))
     except Exception as e:
         messages.error(request, 'Ocurrió un error inesperado al confirmar el pedido.')
-        print(e)  # opcional: útil para debug
+        print(e)
 
     return redirect('detalle_pedido', pedido_id=pedido.id)
 
 
+# =========================
+# MARCAR PEDIDO COMO ENVIADO
+# =========================
 @login_required
 def marcar_pedido_enviado(request, pedido_id):
     """Cambia el estado del pedido a 'Enviado' si está procesando."""
@@ -383,3 +368,120 @@ def marcar_pedido_enviado(request, pedido_id):
 
     messages.success(request, f'El pedido #{pedido.id} ha sido marcado como Enviado.')
     return redirect('detalle_pedido', pedido_id=pedido.id)
+
+
+@login_required
+def estadisticas_ventas(request):
+    # Solo administradores pueden acceder
+    if request.user.rol != 'Administrador':
+        messages.error(request, "⚠️ No tienes permisos para acceder a esta sección.")
+        return redirect('dashboard')
+
+    # Obtener pedidos enviados
+    pedidos = Pedido.objects.filter(estado='Enviado').select_related('cliente', 'usuario').order_by('-fecha_creacion')
+
+    # Filtros por fecha
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+
+    if fecha_desde:
+        pedidos = pedidos.filter(fecha_creacion__date__gte=fecha_desde)
+    if fecha_hasta:
+        pedidos = pedidos.filter(fecha_creacion__date__lte=fecha_hasta)
+
+    # Calcular totales
+    total_ventas = pedidos.count()
+    monto_total = 0
+    
+    # Calcular monto total desde los documentos asociados
+    for pedido in pedidos:
+        documento = DocumentoVenta.objects.filter(pedido=pedido).first()
+        if documento:
+            monto_total += documento.total
+
+    context = {
+        'pedidos': pedidos,
+        'total_ventas': total_ventas,
+        'monto_total': monto_total,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+    }
+
+    return render(request, 'ventas/estadisticas_ventas.html', context)
+
+
+@login_required
+def exportar_ventas_excel(request):
+    # Solo administradores pueden exportar
+    if request.user.rol != 'Administrador':
+        messages.error(request, "⚠️ No tienes permisos para exportar.")
+        return redirect('dashboard')
+
+    # Obtener pedidos enviados
+    pedidos = Pedido.objects.filter(estado='Enviado').select_related('cliente', 'usuario').order_by('-fecha_creacion')
+
+    # Aplicar filtros de fecha si existen
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+
+    if fecha_desde:
+        pedidos = pedidos.filter(fecha_creacion__date__gte=fecha_desde)
+    if fecha_hasta:
+        pedidos = pedidos.filter(fecha_creacion__date__lte=fecha_hasta)
+
+    # Crear el archivo Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Ventas"
+
+    # Estilos
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=12)
+    header_alignment = Alignment(horizontal="center", vertical="center")
+
+    # Encabezados
+    headers = ['Pedido #', 'Cliente', 'RUT', 'Vendedor', 'Fecha', 'Estado', 'Total']
+    ws.append(headers)
+
+    # Aplicar estilo a encabezados
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+
+    # Agregar datos
+    for pedido in pedidos:
+        documento = DocumentoVenta.objects.filter(pedido=pedido).first()
+        total = documento.total if documento else 0
+
+        ws.append([
+            pedido.id,
+            pedido.cliente.razon_social,
+            pedido.cliente.rut,
+            pedido.usuario.get_full_name() or pedido.usuario.username,
+            pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+            pedido.estado,
+            f"${total:,.0f}"
+        ])
+
+    # Ajustar ancho de columnas
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 30
+    ws.column_dimensions['C'].width = 15
+    ws.column_dimensions['D'].width = 25
+    ws.column_dimensions['E'].width = 20
+    ws.column_dimensions['F'].width = 15
+    ws.column_dimensions['G'].width = 15
+
+    # Preparar respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    # Nombre del archivo con fecha actual
+    filename = f"ventas_{date.today().strftime('%d-%m-%Y')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    # Guardar el archivo en la respuesta
+    wb.save(response)
+    return response

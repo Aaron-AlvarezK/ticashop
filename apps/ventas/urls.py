@@ -28,4 +28,7 @@ urlpatterns = [
 
     path('pedidos/<int:pedido_id>/confirmar/', views.confirmar_pedido, name='confirmar_pedido'),
     path('pedidos/<int:pedido_id>/enviar/', views.marcar_pedido_enviado, name='marcar_pedido_enviado'),
+    
+    path('estadisticas/', views.estadisticas_ventas, name='estadisticas_ventas'),
+    path('exportar-excel/', views.exportar_ventas_excel, name='exportar_ventas_excel'),
 ]

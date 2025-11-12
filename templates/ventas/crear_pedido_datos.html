@@ -115,8 +115,53 @@
 
     function actualizarCampos() {
         const tipo = tipoSelect.value;
-        boletaFields.style.display = tipo === "Boleta" ? "block" : "none";
-        facturaFields.style.display = tipo === "Factura" ? "block" : "none";
+        
+        if (tipo === "Boleta") {
+            // Mostrar campos de Boleta
+            boletaFields.style.display = "block";
+            facturaFields.style.display = "none";
+            
+            // Habilitar campos de Boleta y deshabilitar Factura
+            habilitarCampos(boletaFields, true);
+            habilitarCampos(facturaFields, false);
+            
+        } else if (tipo === "Factura") {
+            // Mostrar campos de Factura
+            boletaFields.style.display = "none";
+            facturaFields.style.display = "block";
+            
+            // Habilitar campos de Factura y deshabilitar Boleta
+            habilitarCampos(boletaFields, false);
+            habilitarCampos(facturaFields, true);
+            
+        } else {
+            // Si no hay selección, ocultar ambos
+            boletaFields.style.display = "none";
+            facturaFields.style.display = "none";
+            habilitarCampos(boletaFields, false);
+            habilitarCampos(facturaFields, false);
+        }
+    }
+
+    function habilitarCampos(contenedor, habilitar) {
+        // Obtener todos los inputs, selects y textareas dentro del contenedor
+        const campos = contenedor.querySelectorAll('input, select, textarea');
+        campos.forEach(campo => {
+            if (habilitar) {
+                campo.removeAttribute('disabled');
+                // Restaurar required si tenía el atributo data-required
+                if (campo.hasAttribute('data-required')) {
+                    campo.setAttribute('required', 'required');
+                }
+            } else {
+                // Guardar si era required antes de deshabilitar
+                if (campo.hasAttribute('required')) {
+                    campo.setAttribute('data-required', 'true');
+                    campo.removeAttribute('required');
+                }
+                campo.setAttribute('disabled', 'disabled');
+            }
+        });
     }
 
     tipoSelect.addEventListener("change", actualizarCampos);
