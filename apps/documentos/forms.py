@@ -4,27 +4,56 @@ from apps.clientes.models import Cliente
 from apps.productos.models import Producto
 
 class DocumentoVentaForm(forms.ModelForm):
+    # Campos adicionales para modalidad de pago
+    MODALIDADES = (
+        ('ahora', 'Pagar ahora'),
+        ('plazos', 'Pagar a plazos'),
+    )
+    
+    DIAS_PLAZO_CHOICES = (
+        (15, '15 días'),
+        (30, '30 días'),
+        (45, '45 días'),
+        (60, '60 días'),
+        (90, '90 días'),
+    )
+    
+    modalidad_pago = forms.ChoiceField(
+        choices=MODALIDADES,
+        widget=forms.RadioSelect(attrs={'class': 'form-check-input'}),
+        label='Modalidad de pago',
+        initial='ahora'
+    )
+    
+    dias_plazo = forms.ChoiceField(
+        choices=DIAS_PLAZO_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Días de plazo',
+        initial=30
+    )
+    
     class Meta:
         model = DocumentoVenta
         fields = [
-            'tipo_documento', 'cliente', 'fecha_vencimiento', 
-            'medio_de_pago'
+            'tipo_documento', 'cliente', 'medio_de_pago'
         ]
         widgets = {
             'tipo_documento': forms.Select(attrs={'class': 'form-control'}),
             'cliente': forms.Select(attrs={'class': 'form-control'}),
-            'fecha_vencimiento': forms.DateInput(attrs={
-                'class': 'form-control', 
-                'type': 'date'
-            }),
             'medio_de_pago': forms.Select(attrs={'class': 'form-control'}),
         }
         labels = {
             'tipo_documento': 'Tipo de Documento',
             'cliente': 'Cliente',
-            'fecha_vencimiento': 'Fecha de Vencimiento (opcional)',
             'medio_de_pago': 'Medio de Pago',
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Hacer que dias_plazo no sea requerido por defecto
+        self.fields['dias_plazo'].required = False
+
 
 class DetalleDocumentoForm(forms.ModelForm):
     class Meta:
@@ -41,6 +70,7 @@ class DetalleDocumentoForm(forms.ModelForm):
                 'step': '0.01'
             }),
         }
+
 
 class PagoForm(forms.ModelForm):
     class Meta:

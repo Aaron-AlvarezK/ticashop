@@ -3,7 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction, models
 from decimal import Decimal
-from datetime import date
+from datetime import timedelta, date,timezone
+from django.utils import timezone
 
 from apps.ventas.models import Pedido, DetallePedido
 from apps.ventas.forms import PedidoForm, TipoDocumentoForm, BoletaForm, FacturaForm
@@ -39,195 +40,327 @@ def listar_pedidos(request):
 
 
 # =========================
-# PASO 1: CREAR PEDIDO (DATOS DEL DOCUMENTO)
-# =========================
 @login_required
-def crear_pedido_datos(request):
-    """Primera etapa: cliente, tipo de documento y datos de venta"""
+def crear_pedido_datos(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+
     if request.method == 'POST':
-        pedido_form = PedidoForm(request.POST)
-        tipo_form = TipoDocumentoForm(request.POST)
-        tipo_documento = request.POST.get('tipo_documento')
+        # Hacemos mutable el POST para modificarlo
+        post = request.POST.copy()
 
-        # Inicializar el formulario correcto según tipo_documento
-        if tipo_documento == 'Boleta':
-            doc_form = BoletaForm(request.POST)
-        elif tipo_documento == 'Factura':
-            doc_form = FacturaForm(request.POST)
-        else:
-            doc_form = None
+        modalidad = post.get('modalidad_pago', 'ahora')
 
-        # Validación principal
-        if pedido_form.is_valid() and tipo_form.is_valid():
-            # Validar también formulario de documento si corresponde
-            if tipo_documento == 'Boleta' and doc_form.is_valid():
-                pedido = pedido_form.save(commit=False)
-                pedido.usuario = request.user
-                pedido.save()
+        # Inyectar fecha_emision si modalidad es 'ahora' y no viene en POST
+        if modalidad == 'ahora' and not post.get('fecha_emision'):
+            post['fecha_emision'] = timezone.localdate().isoformat()            # Limpiar fecha_vencimiento porque no aplica
+            post['fecha_vencimiento'] = ''
 
-                # Guardar datos en sesión solo para Boleta
-                request.session['pedido_temp_data'] = {
-                    'tipo_documento': tipo_documento,
-                    'medio_de_pago': doc_form.cleaned_data.get('medio_de_pago'),
-                }
+        pedido_form = PedidoForm(post, instance=pedido)
+        tipo_form = TipoDocumentoForm(post)
+        boleta_form = BoletaForm(post)
+        factura_form = FacturaForm(post)
 
-                messages.success(request, f'Pedido #{pedido.id} creado. Ahora agregue productos.')
-                return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+        if not (pedido_form.is_valid() and tipo_form.is_valid()):
+            messages.error(request, 'Revisa los datos del pedido y el tipo de documento.')
+            return render(request, 'ventas/crear_pedido_datos.html', {
+                'pedido_form': pedido_form,
+                'tipo_form': tipo_form,
+                'boleta_form': boleta_form,
+                'factura_form': factura_form,
+                'pedido': pedido,
+            })
 
-            elif tipo_documento == 'Factura' and doc_form.is_valid():
-                pedido = pedido_form.save(commit=False)
-                pedido.usuario = request.user
-                pedido.save()
+        # actualiza cliente/observaciones del pedido
+        pedido_form.save()
 
-                # Guardar datos en sesión para Factura
-                request.session['pedido_temp_data'] = {
-                    'tipo_documento': tipo_documento,
-                    'medio_de_pago': doc_form.cleaned_data.get('medio_de_pago'),
-                    'fecha_emision': str(doc_form.cleaned_data.get('fecha_emision')),
-                    'fecha_vencimiento': str(doc_form.cleaned_data.get('fecha_vencimiento')),
-                    'razon_social': doc_form.cleaned_data.get('razon_social'),
-                    'rut': doc_form.cleaned_data.get('rut'),
-                    'giro': doc_form.cleaned_data.get('giro'),
-                    'direccion': doc_form.cleaned_data.get('direccion'),
-                    'ciudad': doc_form.cleaned_data.get('ciudad'),
-                    'comuna': doc_form.cleaned_data.get('comuna'),
-                }
+        tipo_doc = tipo_form.cleaned_data['tipo_documento']
 
-                messages.success(request, f'Pedido #{pedido.id} creado. Ahora agregue productos.')
-                return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+        # Crear documento
+        doc = DocumentoVenta()
+        doc.pedido = pedido
+        doc.cliente = pedido.cliente
+        doc.tipo_documento = tipo_doc
+        doc.vendedor = request.user  # asigna el usuario actual
 
+        # Totales
+        neto = sum((dp.subtotal for dp in pedido.detalles.all()), Decimal('0'))
+        doc.neto = neto
+        doc.iva = (neto * Decimal('0.19')).quantize(Decimal('1.'))
+        doc.total = doc.neto + doc.iva
+
+        if tipo_doc == 'Factura':
+            if not factura_form.is_valid():
+                messages.error(request, 'Revisa los datos de la factura.')
+                return render(request, 'ventas/crear_pedido_datos.html', {
+                    'pedido_form': pedido_form,
+                    'tipo_form': tipo_form,
+                    'boleta_form': boleta_form,
+                    'factura_form': factura_form,
+                    'pedido': pedido,
+                })
+
+            # Campos de factura
+            doc.razon_social = factura_form.cleaned_data['razon_social']
+            doc.rut = factura_form.cleaned_data['rut']
+            doc.giro = factura_form.cleaned_data['giro']
+            doc.direccion = factura_form.cleaned_data['direccion']
+            doc.ciudad = factura_form.cleaned_data['ciudad']
+            doc.comuna = factura_form.cleaned_data['comuna']
+            doc.medio_de_pago = factura_form.cleaned_data['medio_de_pago']
+
+            dias_plazo = post.get('dias_plazo')
+
+            fecha_emision_user = factura_form.cleaned_data.get('fecha_emision')
+            fecha_venc_user = factura_form.cleaned_data.get('fecha_vencimiento')
+
+            if modalidad == 'plazos':
+                doc.fecha_emision = fecha_emision_user or date.today()
+                
+                if fecha_venc_user:
+                    doc.fecha_vencimiento = fecha_venc_user
+                elif dias_plazo:
+                    try:
+                        doc.fecha_vencimiento = doc.fecha_emision + timedelta(days=int(dias_plazo))
+                    except (ValueError, TypeError):
+                        doc.fecha_vencimiento = None
+                else:
+                    doc.fecha_vencimiento = None
+                doc.estado = 'Emitida'
             else:
-                messages.error(request, 'Por favor complete correctamente los datos del documento seleccionado.')
+                # Pagar ahora: fecha de hoy
+                doc.fecha_emision = timezone.now()
+                doc.fecha_vencimiento = None
+                doc.estado = 'Emitida'
+
         else:
-            messages.error(request, 'Por favor corrija los errores en el formulario.')
+            # Boleta
+            if boleta_form.is_valid():
+                doc.medio_de_pago = boleta_form.cleaned_data['medio_de_pago']
+            doc.fecha_emision = date.today()
+            doc.fecha_vencimiento = None
+            doc.estado = 'Emitida'
 
-    else:
-        pedido_form = PedidoForm()
-        tipo_form = TipoDocumentoForm()
-        boleta_form = BoletaForm()
-        factura_form = FacturaForm()
+        doc.save()
 
-    context = {
+        # Copiar detalles del pedido al documento
+        for d in pedido.detalles.all():
+            DetalleDocumento.objects.create(
+                documento=doc,
+                producto=d.producto,
+                cantidad=d.cantidad,
+                precio_unitario_venta=d.precio_unitario,
+                costo_unitario_venta=getattr(d.producto, 'costo_unitario', Decimal('0')),
+            )
+
+        messages.success(request, 'Documento creado correctamente.')
+        return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+
+    # GET
+    pedido_form = PedidoForm(instance=pedido)
+    tipo_form = TipoDocumentoForm()
+    boleta_form = BoletaForm()
+    factura_form = FacturaForm()
+
+    return render(request, 'ventas/crear_pedido_datos.html', {
         'pedido_form': pedido_form,
         'tipo_form': tipo_form,
         'boleta_form': boleta_form,
         'factura_form': factura_form,
-    }
-    return render(request, 'ventas/crear_pedido_datos.html', context)
-
-
+        'pedido': pedido,
+    })
 # =========================
 # PASO 2: AGREGAR PRODUCTOS AL PEDIDO
 # =========================
-
 @login_required
 def agregar_productos_pedido(request, pedido_id):
-    pedido = get_object_or_404(Pedido, id=pedido_id)
-
-    # Productos activos disponibles
+    """Vista para agregar productos al pedido y actualizar el documento"""
+    
+    # Obtener pedido con relaciones precargadas
+    pedido = get_object_or_404(
+        Pedido.objects.select_related('cliente', 'usuario', 'documentoventa'),
+        id=pedido_id
+    )
+    
+    # Verificar que el documento existe
+    if not hasattr(pedido, 'documentoventa') or not pedido.documentoventa:
+        messages.error(request, "⚠️ Este pedido no tiene un documento asociado. Por favor, contacte al administrador.")
+        return redirect('lista_pedidos')
+    
+    documento = pedido.documentoventa
+    
+    # Obtener productos disponibles
     productos = Producto.objects.filter(activo=True).order_by('nombre')
     
-    # Detalles actuales del pedido
-    detalles = DetallePedido.objects.filter(pedido=pedido)
-
-    # Generar carrito con los productos ya agregados
-    carrito = [{
-        'producto_id': d.producto.id,
-        'nombre': d.producto.nombre,
-        'cantidad': d.cantidad,
-        'precio': d.precio_unitario_venta,
-        'subtotal': d.subtotal
-    } for d in detalles]
-
-    # Variable para mostrar errores en el template
+    # Obtener detalles del pedido (carrito)
+    detalles = DetallePedido.objects.filter(pedido=pedido).select_related('producto')
+    
+    # Preparar carrito para el template
+    carrito = []
+    for detalle in detalles:
+        carrito.append({
+            'producto_id': detalle.producto.id,
+            'nombre': detalle.producto.nombre,
+            'cantidad': detalle.cantidad,
+            'precio': detalle.precio_unitario_venta,  # ✅ Campo correcto
+            'subtotal': detalle.subtotal,
+        })
+    
     mensaje_error = None
-
-    # Obtener tipo de documento desde la sesión (si existe)
-    pedido_temp = request.session.get('pedido_temp', {})
-    tipo_documento = pedido_temp.get('tipo_documento', 'No especificado')
-
-    # Procesar POST: Agregar producto
-    if request.method == "POST" and "producto_id" in request.POST:
-        producto_id = request.POST.get("producto_id")
-        cantidad = int(request.POST.get("cantidad", 1))
-
-        try:
-            producto = get_object_or_404(Producto, id=producto_id)
-
-            # Calcular cuántos ya tiene en el pedido
-            cantidad_actual = DetallePedido.objects.filter(
-                pedido=pedido, 
-                producto=producto
-            ).aggregate(total=models.Sum('cantidad'))['total'] or 0
-
-            cantidad_total_solicitada = cantidad_actual + cantidad
-
-            # Validar stock disponible
-            if producto.stock < cantidad_total_solicitada:
-                mensaje_error = (
-                    f"⚠️ Stock insuficiente para {producto.nombre}. "
-                    f"Solicitado: {cantidad_total_solicitada} | "
-                    f"Disponible: {producto.stock} | "
-                    f"Ya tienes {cantidad_actual} en el pedido."
-                )
-            else:
-                # Crear detalle del pedido
-                DetallePedido.objects.create(
-                    pedido=pedido,
-                    producto=producto,
-                    cantidad=cantidad,
-                    precio_unitario_venta=producto.precio_unitario
-                )
-
-                # Descontar stock
-                producto.stock -= cantidad
-                producto.save()
-
-                messages.success(
-                    request, 
-                    f"✅ {producto.nombre} agregado correctamente al pedido #{pedido.id}."
-                )
+    
+    if request.method == 'POST':
+        # ✅ CONFIRMAR PEDIDO
+        if 'confirmar_pedido' in request.POST:
+            if not detalles.exists():
+                messages.error(request, "⚠️ No puede confirmar un pedido sin productos.")
                 return redirect('agregar_productos_pedido', pedido_id=pedido.id)
-
-        except Exception as e:
-            mensaje_error = f"❌ Error al agregar el producto: {str(e)}"
-
-    # Procesar POST: Confirmar pedido
-    if request.method == "POST" and "confirmar_pedido" in request.POST:
-        if not detalles.exists():
-            messages.warning(request, "⚠️ No puedes confirmar un pedido sin productos.")
-            return redirect('agregar_productos_pedido', pedido_id=pedido.id)
-
-        # Cambiar estado del pedido
-        pedido.estado = 'Procesando'
-        pedido.save()
-
-        messages.success(request, f"✅ Pedido #{pedido.id} confirmado correctamente.")
-        return redirect('detalle_pedido', pedido_id=pedido.id)
-
-    # Contexto para el template
+            
+            try:
+                with transaction.atomic():
+                    # Cambiar estado del pedido
+                    pedido.estado = 'Enviado'
+                    pedido.save()
+                    
+                    # Actualizar estado del documento
+                    documento.estado = 'Emitida'
+                    documento.save()
+                    
+                    # Crear detalles del documento desde los detalles del pedido
+                    for detalle in detalles:
+                        DetalleDocumento.objects.create(
+                            documento=documento,
+                            producto=detalle.producto,
+                            cantidad=detalle.cantidad,
+                            precio_unitario_venta=detalle.precio_unitario_venta,  # ✅ Campo correcto
+                            subtotal=detalle.subtotal,
+                            costo_unitario_venta=detalle.producto.costo_unitario
+                        )
+                    
+                    messages.success(request, f"✅ Pedido #{pedido.id} confirmado exitosamente.")
+                    return redirect('detalle_pedido', pedido_id=pedido.id)
+                    
+            except Exception as e:
+                messages.error(request, f"❌ Error al confirmar el pedido: {str(e)}")
+                return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+        
+        # ✅ AGREGAR PRODUCTO AL PEDIDO
+        else:
+            producto_id = request.POST.get('producto_id')
+            cantidad = request.POST.get('cantidad')
+            
+            if not producto_id or not cantidad:
+                mensaje_error = "⚠️ Debe seleccionar un producto y especificar la cantidad."
+            else:
+                try:
+                    cantidad = int(cantidad)
+                    producto = get_object_or_404(Producto, id=producto_id)
+                    
+                    # Validar stock disponible
+                    if producto.stock < cantidad:
+                        mensaje_error = f"⚠️ Stock insuficiente. Solo hay {producto.stock} unidades disponibles de {producto.nombre}."
+                    else:
+                        with transaction.atomic():
+                            # Verificar si el producto ya está en el pedido
+                            detalle_existente = DetallePedido.objects.filter(
+                                pedido=pedido,
+                                producto=producto
+                            ).first()
+                            
+                            if detalle_existente:
+                                # Actualizar cantidad
+                                nueva_cantidad = detalle_existente.cantidad + cantidad
+                                
+                                if producto.stock < nueva_cantidad:
+                                    mensaje_error = f"⚠️ Stock insuficiente. Solo hay {producto.stock} unidades disponibles."
+                                else:
+                                    detalle_existente.cantidad = nueva_cantidad
+                                    detalle_existente.subtotal = detalle_existente.cantidad * detalle_existente.precio_unitario_venta  # ✅ Campo correcto
+                                    detalle_existente.save()
+                                    
+                                    # Descontar stock
+                                    producto.stock -= cantidad
+                                    producto.save()
+                                    
+                                    messages.success(request, f"✅ Cantidad actualizada: {producto.nombre} x {nueva_cantidad}")
+                            else:
+                                # Crear nuevo detalle
+                                DetallePedido.objects.create(
+                                    pedido=pedido,
+                                    producto=producto,
+                                    cantidad=cantidad,
+                                    precio_unitario_venta=producto.precio_unitario,  # ✅ Campo correcto
+                                    subtotal=producto.precio_unitario * cantidad
+                                )
+                                
+                                # Descontar stock
+                                producto.stock -= cantidad
+                                producto.save()
+                                
+                                messages.success(request, f"✅ Producto agregado: {producto.nombre} x {cantidad}")
+                            
+                            # ✅ ACTUALIZAR TOTALES DEL DOCUMENTO
+                            actualizar_totales_documento(pedido, documento)
+                            
+                            return redirect('agregar_productos_pedido', pedido_id=pedido.id)
+                            
+                except ValueError:
+                    mensaje_error = "⚠️ La cantidad debe ser un número válido."
+                except Exception as e:
+                    mensaje_error = f"❌ Error al agregar el producto: {str(e)}"
+    
     context = {
         'pedido': pedido,
-        'carrito': carrito,
         'productos': productos,
-        'tipo_documento': tipo_documento,
+        'carrito': carrito,
         'mensaje_error': mensaje_error,
     }
-
+    
     return render(request, 'ventas/agregar_productos_pedido.html', context)
-# =========================
-# ELIMINAR PRODUCTO DEL CARRITO
-# =========================
+
+
+def actualizar_totales_documento(pedido, documento):
+    """Función auxiliar para recalcular totales del documento"""
+    detalles = DetallePedido.objects.filter(pedido=pedido)
+    
+    neto = sum(d.subtotal for d in detalles)
+    iva = neto * Decimal('0.19')
+    total = neto + iva
+    
+    documento.neto = neto
+    documento.iva = iva
+    documento.total = total
+    documento.save()
+
+
 @login_required
 def eliminar_producto_carrito(request, pedido_id, producto_id):
-    """Elimina un producto del carrito temporal"""
-    carrito = request.session.get(f'carrito_pedido_{pedido_id}', [])
-    carrito = [item for item in carrito if item['producto_id'] != str(producto_id)]
-    request.session[f'carrito_pedido_{pedido_id}'] = carrito
-    messages.success(request, 'Producto eliminado del pedido.')
+    """Elimina un producto del pedido y restaura el stock"""
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    producto = get_object_or_404(Producto, id=producto_id)
+    
+    try:
+        with transaction.atomic():
+            detalle = DetallePedido.objects.filter(pedido=pedido, producto=producto).first()
+            
+            if detalle:
+                # Restaurar stock
+                producto.stock += detalle.cantidad
+                producto.save()
+                
+                # Eliminar detalle
+                detalle.delete()
+                
+                # Actualizar totales del documento
+                if hasattr(pedido, 'documentoventa') and pedido.documentoventa:
+                    actualizar_totales_documento(pedido, pedido.documentoventa)
+                
+                messages.success(request, f"✅ Producto eliminado: {producto.nombre}")
+            else:
+                messages.warning(request, "⚠️ El producto no está en el pedido.")
+                
+    except Exception as e:
+        messages.error(request, f"❌ Error al eliminar el producto: {str(e)}")
+    
     return redirect('agregar_productos_pedido', pedido_id=pedido_id)
-
-
 # =========================
 # DETALLE DEL PEDIDO
 # =========================
@@ -372,13 +505,14 @@ def marcar_pedido_enviado(request, pedido_id):
 
 @login_required
 def estadisticas_ventas(request):
-    # Solo administradores pueden acceder
     if request.user.rol != 'Administrador':
         messages.error(request, "⚠️ No tienes permisos para acceder a esta sección.")
         return redirect('dashboard')
 
-    # Obtener pedidos enviados
-    pedidos = Pedido.objects.filter(estado='Enviado').select_related('cliente', 'usuario').order_by('-fecha_creacion')
+    # Obtener pedidos enviados con documento precargado
+    pedidos = (Pedido.objects.filter(estado='Enviado')
+                .select_related('cliente', 'usuario', 'documentoventa')
+                .order_by('-fecha_creacion'))
 
     # Filtros por fecha
     fecha_desde = request.GET.get('fecha_desde')
@@ -391,13 +525,11 @@ def estadisticas_ventas(request):
 
     # Calcular totales
     total_ventas = pedidos.count()
-    monto_total = 0
-    
-    # Calcular monto total desde los documentos asociados
-    for pedido in pedidos:
-        documento = DocumentoVenta.objects.filter(pedido=pedido).first()
-        if documento:
-            monto_total += documento.total
+    monto_total = sum(
+        p.documentoventa.total 
+        for p in pedidos 
+        if hasattr(p, 'documentoventa') and p.documentoventa and p.documentoventa.total
+    )
 
     context = {
         'pedidos': pedidos,
@@ -412,15 +544,14 @@ def estadisticas_ventas(request):
 
 @login_required
 def exportar_ventas_excel(request):
-    # Solo administradores pueden exportar
     if request.user.rol != 'Administrador':
         messages.error(request, "⚠️ No tienes permisos para exportar.")
         return redirect('dashboard')
 
-    # Obtener pedidos enviados
-    pedidos = Pedido.objects.filter(estado='Enviado').select_related('cliente', 'usuario').order_by('-fecha_creacion')
+    pedidos = (Pedido.objects.filter(estado='Enviado')
+                .select_related('cliente', 'usuario', 'documentoventa')
+                .order_by('-fecha_creacion'))
 
-    # Aplicar filtros de fecha si existen
     fecha_desde = request.GET.get('fecha_desde')
     fecha_hasta = request.GET.get('fecha_hasta')
 
@@ -429,30 +560,24 @@ def exportar_ventas_excel(request):
     if fecha_hasta:
         pedidos = pedidos.filter(fecha_creacion__date__lte=fecha_hasta)
 
-    # Crear el archivo Excel
     wb = Workbook()
     ws = wb.active
     ws.title = "Ventas"
 
-    # Estilos
     header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF", size=12)
     header_alignment = Alignment(horizontal="center", vertical="center")
 
-    # Encabezados
     headers = ['Pedido #', 'Cliente', 'RUT', 'Vendedor', 'Fecha', 'Estado', 'Total']
     ws.append(headers)
 
-    # Aplicar estilo a encabezados
     for cell in ws[1]:
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = header_alignment
 
-    # Agregar datos
     for pedido in pedidos:
-        documento = DocumentoVenta.objects.filter(pedido=pedido).first()
-        total = documento.total if documento else 0
+        total = pedido.documentoventa.total if hasattr(pedido, 'documentoventa') and pedido.documentoventa else 0
 
         ws.append([
             pedido.id,
@@ -464,7 +589,6 @@ def exportar_ventas_excel(request):
             f"${total:,.0f}"
         ])
 
-    # Ajustar ancho de columnas
     ws.column_dimensions['A'].width = 12
     ws.column_dimensions['B'].width = 30
     ws.column_dimensions['C'].width = 15
@@ -473,15 +597,25 @@ def exportar_ventas_excel(request):
     ws.column_dimensions['F'].width = 15
     ws.column_dimensions['G'].width = 15
 
-    # Preparar respuesta HTTP
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
-    
-    # Nombre del archivo con fecha actual
     filename = f"ventas_{date.today().strftime('%d-%m-%Y')}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
 
-    # Guardar el archivo en la respuesta
     wb.save(response)
     return response
+
+def crear_pedido_inicial(request):
+    if request.method == 'POST':
+        form = PedidoForm(request.POST)
+        if form.is_valid():
+            pedido = form.save(commit=False)
+            pedido.estado = 'Borrador'
+            pedido.usuario = request.user  
+            pedido.save()
+            messages.success(request, f'Pedido #{pedido.id} creado. Ahora define el tipo de documento.')
+            return redirect('crear_pedido_datos', pedido_id=pedido.id)
+    else:
+        form = PedidoForm()
+    return render(request, 'ventas/crear_pedido_inicial.html', {'form': form})

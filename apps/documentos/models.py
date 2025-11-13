@@ -58,7 +58,11 @@ class DocumentoVenta(models.Model):
         choices=ESTADOS_DOCUMENTO, 
         default='Emitida'
     )
-    fecha_emision = models.DateTimeField(auto_now_add=True, verbose_name='Fecha emisión')
+    fecha_emision = models.DateTimeField(
+        verbose_name='Fecha emisión',
+        null=True,
+        blank=True
+    ) 
     fecha_vencimiento = models.DateField(
         blank=True, 
         null=True,

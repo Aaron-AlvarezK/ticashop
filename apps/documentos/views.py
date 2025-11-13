@@ -11,30 +11,16 @@ from apps.ventas.models import Pedido
 from apps.productos.models import Producto
 
 
-# ========== LISTAR DOCUMENTOS ==========
-@login_required
-def listar_documentos(request):
-    """Lista todos los documentos de venta"""
-    documentos = DocumentoVenta.objects.select_related(
-        'cliente', 'vendedor'
-    ).prefetch_related('detalles').all()
-    
-    # Filtros opcionales
-    tipo = request.GET.get('tipo')
-    estado = request.GET.get('estado')
-    
-    if tipo:
-        documentos = documentos.filter(tipo_documento=tipo)
-    if estado:
-        documentos = documentos.filter(estado=estado)
-    
-    context = {
-        'documentos': documentos,
-        'tipos': DocumentoVenta.TIPOS_DOCUMENTO,
-        'estados': DocumentoVenta.ESTADOS_DOCUMENTO,
-    }
-    return render(request, 'documentos/listar_documentos.html', context)
+from django.db.models import Sum
 
+def listar_documentos(request):
+    facturas = (
+        DocumentoVenta.objects
+        .filter(tipo_documento='Factura')
+        .select_related('cliente', 'vendedor', 'pedido')
+        .order_by('-fecha_emision', '-folio')  # clave: ordenar por fecha_emision
+    )
+    return render(request, 'documentos/listar_documentos.html', {'facturas': facturas})
 
 # ========== CREAR DOCUMENTO DESDE PEDIDO ==========
 @login_required
@@ -160,3 +146,86 @@ def anular_documento(request, documento_id):
         return redirect('listar_documentos')
     
     return render(request, 'documentos/confirmar_anular.html', {'documento': documento})
+
+
+# apps/documentos/views.py
+from datetime import timedelta
+from django.utils import timezone
+from decimal import Decimal
+
+@login_required
+@transaction.atomic
+def crear_documento_desde_pedido(request, pedido_id):
+    pedido = get_object_or_404(Pedido.objects.select_related('cliente').prefetch_related('detalles__producto'),
+                               id=pedido_id)
+
+    if hasattr(pedido, 'documento'):
+        messages.warning(request, 'Este pedido ya tiene un documento asociado.')
+        return redirect('detalle_documento', documento_id=pedido.documento.id)
+
+    if request.method == 'POST':
+        form = DocumentoVentaForm(request.POST)
+        if form.is_valid():
+            doc = form.save(commit=False)
+            doc.vendedor = request.user
+            doc.pedido = pedido
+            doc.cliente = pedido.cliente
+            
+            # Procesar modalidad de pago
+            modalidad = form.cleaned_data.get('modalidad_pago')
+            dias_plazo = form.cleaned_data.get('dias_plazo')
+            
+            hoy = timezone.localdate()
+            doc.fecha_emision = timezone.now()
+            
+            if modalidad == 'ahora':
+                # Pago inmediato: sin vencimiento o vence hoy
+                doc.fecha_vencimiento = None  # o hoy si prefieres
+                doc.estado = 'Pagada'  # Marcar como pagada directamente
+                messages.success(request, 'Factura creada y marcada como PAGADA (pago inmediato)')
+            else:
+                # Pago a plazos: calcular vencimiento
+                dias = int(dias_plazo) if dias_plazo else 30
+                doc.fecha_vencimiento = hoy + timedelta(days=dias)
+                doc.estado = 'Emitida'
+                messages.success(request, f'Factura creada. Vence el {doc.fecha_vencimiento.strftime("%d/%m/%Y")}')
+            
+            # Calcular totales desde el pedido
+            neto = Decimal('0')
+            for dp in pedido.detalles.all():
+                neto += dp.subtotal
+            
+            doc.neto = neto
+            doc.iva = (neto * Decimal('0.19')).quantize(Decimal('1.'))
+            doc.total = doc.neto + doc.iva
+            
+            doc.save()  # Aquí se asigna el folio automáticamente
+            
+            # Copiar detalles del pedido al documento
+            for dp in pedido.detalles.all():
+                DetalleDocumento.objects.create(
+                    documento=doc,
+                    producto=dp.producto,
+                    cantidad=dp.cantidad,
+                    precio_unitario_venta=dp.precio_unitario,
+                    costo_unitario_venta=dp.producto.costo_unitario,
+                )
+            
+            return redirect('detalle_documento', documento_id=doc.id)
+    else:
+        form = DocumentoVentaForm(initial={'cliente': pedido.cliente})
+
+    return render(request, 'documentos/crear_documento.html', {
+        'form': form,
+        'pedido': pedido,
+    })
+
+
+def esta_vencida(self):
+    """Verifica si la factura está vencida"""
+    try:
+        if self.fecha_vencimiento and self.estado in ['Emitida', 'Pago Parcial']:
+            return timezone.now().date() > self.fecha_vencimiento
+        return False
+    except:
+        return False

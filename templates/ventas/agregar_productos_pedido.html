@@ -43,13 +43,45 @@
             <div class="row">
                 <div class="col-md-6">
                     <p><strong>Cliente:</strong> {{ pedido.cliente.razon_social }}</p>
-                    <p><strong>Vendedor:</strong> {{ pedido.usuario.get_full_name|default:pedido.usuario.username }}</p>
+                    {% if pedido.usuario %}
+                        <p><strong>Vendedor:</strong>
+                            {% if pedido.usuario.get_full_name %}
+                                {{ pedido.usuario.get_full_name }}
+                            {% else %}
+                                {{ pedido.usuario.username }}
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        <p><strong>Vendedor:</strong> No asignado</p>
+                    {% endif %}
                 </div>
                 <div class="col-md-6">
-                    <p><strong>Tipo de Documento:</strong> {{ tipo_documento }}</p>
+                    <p><strong>Tipo de Documento:</strong> 
+                        {% if pedido.documentoventa %}
+                            {{ pedido.documentoventa.tipo_documento }}
+                        {% else %}
+                            <span class="text-muted">No especificado</span>
+                        {% endif %}
+                    </p>
                     <p><strong>Fecha Creación:</strong> {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
                 </div>
             </div>
+            
+            <!-- Totales del documento -->
+            {% if pedido.documentoventa %}
+            <hr>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Neto:</strong> ${{ pedido.documentoventa.neto|floatformat:0 }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>IVA (19%):</strong> ${{ pedido.documentoventa.iva|floatformat:0 }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Total:</strong> <span class="text-success fs-5">${{ pedido.documentoventa.total|floatformat:0 }}</span></p>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -70,7 +102,7 @@
                                 <option value="{{ producto.id }}" 
                                         data-stock="{{ producto.stock }}" 
                                         data-precio="{{ producto.precio_unitario }}">
-                                    {{ producto.nombre }} - ${{ producto.precio_unitario|floatformat:0|intcomma }} (Stock: {{ producto.stock }})
+                                    {{ producto.nombre }} - ${{ producto.precio_unitario|floatformat:0 }} (Stock: {{ producto.stock }})
                                 </option>
                             {% endfor %}
                         </select>
@@ -117,12 +149,12 @@
                                 <tr>
                                     <td>{{ item.nombre }}</td>
                                     <td class="text-center">{{ item.cantidad }}</td>
-                                    <td class="text-end">${{ item.precio|floatformat:0|intcomma }}</td>
-                                    <td class="text-end"><strong>${{ item.subtotal|floatformat:0|intcomma }}</strong></td>
+                                    <td class="text-end">${{ item.precio|floatformat:0 }}</td>
+                                    <td class="text-end"><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
                                     <td class="text-center">
                                         <a href="{% url 'eliminar_producto_carrito' pedido.id item.producto_id %}" 
-                                           class="btn btn-danger btn-sm"
-                                           onclick="return confirm('¿Está seguro de eliminar este producto del pedido?');">
+                                            class="btn btn-danger btn-sm"
+                                            onclick="return confirm('¿Está seguro de eliminar este producto del pedido?');">
                                             <i class="bi bi-trash"></i>
                                         </a>
                                     </td>

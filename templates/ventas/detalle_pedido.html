@@ -44,21 +44,15 @@
 
         <!-- Resumen Financiero -->
         <div class="col-md-6 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <i class="bi bi-cash-stack"></i> Resumen Financiero
-                </div>
-                <div class="card-body">
-                    {% if detalles %}
-                        {% load humanize %}
-                        <p><strong>Subtotal:</strong> ${{ pedido.subtotal|floatformat:0|default:"0" }}</p>
-                        <p><strong>IVA (19%):</strong> ${{ pedido.iva|floatformat:0|default:"0" }}</p>
-                        <hr>
-                        <h4><strong>Total:</strong> <span class="text-success">${{ pedido.total|floatformat:0|default:"0" }}</span></h4>
-                    {% else %}
-                        <p class="text-muted">No hay productos para calcular totales.</p>
-                    {% endif %}
-                </div>
+            <!-- Resumen Financiero -->
+            <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">Resumen Financiero</div>
+            <div class="card-body">
+                <p><strong>Subtotal:</strong> ${{ pedido.documentoventa.neto|floatformat:0 }}</p>
+                <p><strong>IVA (19%):</strong> ${{ pedido.documentoventa.iva|floatformat:0 }}</p>
+                <hr>
+                <p class="fs-4"><strong>Total:</strong> <span class="text-success">${{ pedido.documentoventa.total|floatformat:0 }}</span></p>
+            </div>
             </div>
         </div>
     </div>
@@ -110,7 +104,7 @@
                 <p><strong>Tipo:</strong> {{ documento.tipo_documento }}</p>
                 <p><strong>Folio:</strong> #{{ documento.folio }}</p>
                 <p><strong>Estado:</strong> 
-                    <span class="badge bg-{{ documento.estado|lower }}">{{ documento.estado }}</span>
+                    <span class="{{ documento.estado|lower }}">{{ documento.estado }}</span>
                 </p>
                 <p><strong>Total:</strong> ${{ documento.total|floatformat:0 }}</p>
                 <a href="{% url 'detalle_documento' documento.id %}" class="btn btn-primary btn-sm">

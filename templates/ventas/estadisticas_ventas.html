@@ -90,7 +90,6 @@
                         </thead>
                         <tbody>
                             {% for pedido in pedidos %}
-                                {% with documento=pedido.documentoventa_set.first %}
                                 <tr>
                                     <td>{{ pedido.id }}</td>
                                     <td>{{ pedido.cliente.razon_social }}</td>
@@ -99,8 +98,8 @@
                                     <td>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</td>
                                     <td><span class="badge bg-success">{{ pedido.estado }}</span></td>
                                     <td class="text-end">
-                                        {% if documento %}
-                                            ${{ documento.total|floatformat:0|intcomma }}
+                                        {% if pedido.documentoventa %}
+                                            ${{ pedido.documentoventa.total|floatformat:0|intcomma }}
                                         {% else %}
                                             <span class="text-muted">N/A</span>
                                         {% endif %}
@@ -111,7 +110,6 @@
                                         </a>
                                     </td>
                                 </tr>
-                                {% endwith %}
                             {% endfor %}
                         </tbody>
                     </table>

@@ -4,6 +4,7 @@ from apps.clientes.models import Cliente
 from apps.productos.models import Producto
 from apps.documentos.models import DocumentoVenta
 from datetime import date
+from apps.documentos.models import DocumentoVenta, DetalleDocumento  
 
 
 class PedidoForm(forms.ModelForm):
@@ -105,18 +106,20 @@ class FacturaForm(forms.Form):
         widget=forms.Select(attrs={'class': 'form-select'})
     )
 
+    # forms.py (solo estas 2 líneas cambian)
     fecha_emision = forms.DateField(
         label="Fecha de Emisión",
         required=True,
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-        initial=date.today
+        # quita el initial si no quieres autocompletar
+        # initial=date.today
     )
 
     fecha_vencimiento = forms.DateField(
         label="Fecha de Vencimiento",
-        required=True,
+        required=False,  # antes True
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
-    )
+)
 
     def clean_rut(self):
         rut = self.cleaned_data.get('rut', '').replace('.', '').replace('-', '')
