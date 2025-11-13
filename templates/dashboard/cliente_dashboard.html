@@ -1,0 +1,16 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-tachometer-alt text-primary"></i> Panel de Cliente</h2>
+        <div class="card mt-4">
+            <div class="card-body text-center">
+                <h4 class="text-primary">¡Hola {{ usuario.username }}! 🎉</h4>
+                <p>Panel de cliente funcionando correctamente.</p>
+                <p><strong>Rol:</strong> {{ usuario.rol }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

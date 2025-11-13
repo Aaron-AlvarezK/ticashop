@@ -1,0 +1,248 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container-fluid mt-4">
+    <h2><i class="fas fa-file-invoice text-primary"></i> Crear nuevo Pedido</h2>
+    <hr>
+
+    <!-- Mensajes del sistema -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <strong>Datos del Pedido y Documento</strong>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Cliente:</label>
+                        {{ pedido_form.cliente }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tipo de documento:</label>
+                        {{ tipo_form.tipo_documento }}
+                    </div>
+                </div>
+
+                <!-- BOLETA -->
+                <div id="boleta-fields" style="display:none;">
+                    <h5 class="text-secondary">Datos de Boleta</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Medio de pago:</label>
+                            {{ boleta_form.medio_de_pago }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FACTURA -->
+                <div id="factura-fields" style="display:none;">
+                    <h5 class="text-secondary">Datos de Factura</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Razón Social</label>
+                            {{ factura_form.razon_social }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">RUT</label>
+                            {{ factura_form.rut }}
+                            <small class="text-muted">{{ factura_form.rut.help_text }}</small>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Giro Comercial</label>
+                            {{ factura_form.giro }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dirección</label>
+                            {{ factura_form.direccion }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Ciudad</label>
+                            {{ factura_form.ciudad }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Comuna</label>
+                            {{ factura_form.comuna }}
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Medio de pago</label>
+                            {{ factura_form.medio_de_pago }}
+                        </div>
+
+                        <!-- Modalidad de pago: ahora / a plazos -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label d-block">Modalidad de pago</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="modalidad_pago" id="modalidad_ahora" value="ahora" checked>
+                                <label class="form-check-label" for="modalidad_ahora">Pagar ahora</label>
+                            </div>
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="radio" name="modalidad_pago" id="modalidad_plazos" value="plazos">
+                                <label class="form-check-label" for="modalidad_plazos">Pagar a plazos</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" id="bloque-plazos" style="display:none;">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Días de plazo</label>
+                            <select name="dias_plazo" id="id_dias_plazo" class="form-select">
+                                <option value="15">15 días</option>
+                                <option value="30" selected>30 días</option>
+                                <option value="45">45 días</option>
+                                <option value="60">60 días</option>
+                                <option value="90">90 días</option>
+                            </select>
+                            <div class="form-text">Opcional: puedes calcular el vencimiento desde la emisión.</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Fecha de emisión</label>
+                            {{ factura_form.fecha_emision }}
+                        </div>
+                        <div class="col-md-4 mb-1">
+                            <label class="form-label">Fecha de vencimiento</label>
+                            {{ factura_form.fecha_vencimiento }}
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn_calcular_venc">
+                                    Calcular fecha
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-sm" id="btn_limpiar_venc">
+                                    Limpiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <a href="{% url 'listar_pedidos' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> Continuar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+  const tipoSelect = document.getElementById("id_tipo_documento");
+  const boletaFields = document.getElementById("boleta-fields");
+  const facturaFields = document.getElementById("factura-fields");
+
+  const radioAhora = document.getElementById('modalidad_ahora');
+  const radioPlazos = document.getElementById('modalidad_plazos');
+  const bloquePlazos = document.getElementById('bloque-plazos');
+  const fechaVencInput = document.getElementById('id_fecha_vencimiento');
+  const fechaEmisionInput = document.getElementById('id_fecha_emision');
+  const diasPlazoSelect = document.getElementById('id_dias_plazo');
+  const btnCalc = document.getElementById('btn_calcular_venc');
+  const btnClear = document.getElementById('btn_limpiar_venc');
+
+  function actualizarCampos() {
+    const tipo = tipoSelect.value;
+    if (tipo === "Boleta") {
+      boletaFields.style.display = "block";
+      facturaFields.style.display = "none";
+      habilitarCampos(boletaFields, true);
+      habilitarCampos(facturaFields, false);
+    } else if (tipo === "Factura") {
+      boletaFields.style.display = "none";
+      facturaFields.style.display = "block";
+      habilitarCampos(boletaFields, false);
+      habilitarCampos(facturaFields, true);
+      actualizarBloquePlazos();
+    } else {
+      boletaFields.style.display = "none";
+      facturaFields.style.display = "none";
+      habilitarCampos(boletaFields, false);
+      habilitarCampos(facturaFields, false);
+    }
+  }
+
+  function habilitarCampos(contenedor, habilitar) {
+    const campos = contenedor.querySelectorAll('input, select, textarea');
+    campos.forEach(campo => {
+      if (habilitar) {
+        campo.removeAttribute('disabled');
+        if (campo.hasAttribute('data-required')) {
+          campo.setAttribute('required', 'required');
+        }
+      } else {
+        if (campo.hasAttribute('required')) {
+          campo.setAttribute('data-required', 'true');
+          campo.removeAttribute('required');
+        }
+        campo.setAttribute('disabled', 'disabled');
+      }
+    });
+  }
+
+  function actualizarBloquePlazos() {
+    const usarPlazos = radioPlazos && radioPlazos.checked;
+    if (!bloquePlazos) return;
+
+    bloquePlazos.style.display = usarPlazos ? 'flex' : 'none';
+
+    if (usarPlazos) {
+      if (diasPlazoSelect) diasPlazoSelect.setAttribute('required', 'required');
+      if (fechaEmisionInput) {
+        fechaEmisionInput.disabled = false;
+        fechaEmisionInput.required = true;
+      }
+    } else {
+      if (diasPlazoSelect) diasPlazoSelect.removeAttribute('required');
+      if (fechaEmisionInput) {
+        fechaEmisionInput.disabled = true;
+        fechaEmisionInput.required = false;
+        fechaEmisionInput.value = '';
+      }
+      if (fechaVencInput) fechaVencInput.value = '';
+    }
+  }
+
+  function calcularFechaVencimiento() {
+    if (!fechaEmisionInput || !fechaVencInput) return;
+    const emision = fechaEmisionInput.value;
+    const dias = parseInt(diasPlazoSelect.value || '30', 10);
+    if (!emision) {
+      alert('Primero selecciona la fecha de emisión');
+      return;
+    }
+    const d = new Date(emision);
+    d.setDate(d.getDate() + dias);
+    const venc = d.toISOString().slice(0,10);
+    fechaVencInput.value = venc;
+  }
+
+  tipoSelect.addEventListener("change", actualizarCampos);
+  window.addEventListener("load", actualizarCampos);
+
+  if (radioAhora && radioPlazos) {
+    radioAhora.addEventListener('change', actualizarBloquePlazos);
+    radioPlazos.addEventListener('change', actualizarBloquePlazos);
+  }
+  if (btnCalc) btnCalc.addEventListener('click', calcularFechaVencimiento);
+  if (btnClear) btnClear.addEventListener('click', () => { if (fechaVencInput) fechaVencInput.value = ''; });
+</script>
+
+{% endblock %}
