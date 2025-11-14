@@ -21,6 +21,7 @@
         <table class="table table-striped">
             <thead>
                 <tr>
+                    <th>Foto</th>
                     <th>Nombre</th>
                     <th>Precio</th>
                     <th>Stock</th>
@@ -29,13 +30,20 @@
             <tbody>
                 {% for producto in productos %}
                 <tr>
+                    <td>
+                        {% if producto.foto %}
+                            <img src="{{ producto.foto.url }}" alt="{{ producto.nombre }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+                        {% else %}
+                            <img src="https://via.placeholder.com/50" alt="Sin foto" style="width: 50px; height: 50px; border-radius: 5px;">
+                        {% endif %}
+                    </td>
                     <td>{{ producto.nombre }}</td>
-                    <td>${{ producto.precio }}</td>
+                    <td>${{ producto.precio_unitario|floatformat:0 }}</td>
                     <td>{{ producto.stock }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="3" class="text-center">No hay productos disponibles</td>
+                    <td colspan="4" class="text-center">No hay productos disponibles</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -26,6 +26,7 @@
             <table class="table table-hover">
                 <thead class="table-dark">
                     <tr>
+                        <th>Foto</th>
                         <th>Código</th>
                         <th>Nombre</th>
                         <th>Categoría</th>
@@ -39,6 +40,13 @@
                 <tbody>
                     {% for p in productos %}
                     <tr>
+                        <td>
+                            {% if p.foto %}
+                                <img src="{{ p.foto.url }}" alt="{{ p.nombre }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+                            {% else %}
+                                <img src="https://via.placeholder.com/50" alt="Sin foto" style="width: 50px; height: 50px; border-radius: 5px;">
+                            {% endif %}
+                        </td>
                         <td>{{ p.codigo }}</td>
                         <td>{{ p.nombre }}</td>
                         <td>{{ p.categoria.nombre|default:"Sin categoría" }}</td>
@@ -72,7 +80,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted">
+                        <td colspan="9" class="text-center text-muted">
                             <i class="fas fa-box-open fa-2x mb-2"></i><br>
                             No hay productos registrados.
                         </td>
