@@ -33,19 +33,18 @@
         </div>
     </div>
 
-    <!-- Acciones Rápidas -->
     <div class="card shadow mt-3">
         <div class="card-header bg-success text-white">
             <i class="fas fa-bolt"></i> Acciones Rápidas
         </div>
         <div class="card-body">
-            <a href="{% url 'listar_pedidos' %}" class="btn btn-outline-success m-1">
+            <a href="{% url 'ventas:listar_pedidos' %}" class="btn btn-outline-success m-1">
                 <i class="fas fa-cart-arrow-down"></i> Mis Pedidos
             </a>
-            <a href="{% url 'crear_pedido_inicial' %}" class="btn btn-outline-primary m-1">
+            <a href="{% url 'ventas:crear_pedido_inicial' %}" class="btn btn-outline-primary m-1">
                 <i class="fas fa-plus-circle"></i> Nuevo Pedido
             </a>
-            <a href="{% url 'listar_productos' %}" class="btn btn-outline-dark m-1">
+            <a href="{% url 'productos:listar_productos' %}" class="btn btn-outline-dark m-1">
                 <i class="fas fa-box-open"></i> Ver Productos
             </a>
         </div>

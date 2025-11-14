@@ -48,22 +48,20 @@
             <i class="fas fa-bolt"></i> Acciones Rápidas
         </div>
         <div class="card-body">
-            <a href="{% url 'listar_productos' %}" class="btn btn-outline-primary m-1">
+            <a href="{% url 'productos:listar_productos' %}" class="btn btn-outline-primary m-1">
                 <i class="fas fa-box"></i> Gestionar Productos
             </a>
-            <a href="{% url 'listar_pedidos' %}" class="btn btn-outline-success m-1">
+            <a href="{% url 'ventas:listar_pedidos' %}" class="btn btn-outline-success m-1">
                 <i class="fas fa-cart-shopping"></i> Gestionar Pedidos
             </a>
-            <a href="{% url 'crear_usuario' %}" class="btn btn-outline-dark m-1">
+            <a href="{% url 'usuarios:crear_usuario' %}" class="btn btn-outline-dark m-1">
                 <i class="fas fa-user-plus"></i> Crear Nuevo Usuario
             </a>
-            <a href="{% url 'estadisticas_ventas' %}" class="btn btn-success btn-lg">
+            <a href="{% url 'ventas:estadisticas_ventas' %}" class="btn btn-success btn-lg">
                 <i class="bi bi-graph-up"></i> Ver Estadísticas de Ventas
-            </a>            
-        </div>
-        
+            </a>
+            </div>
     </div>
-
     <!-- Información del Sistema -->
     <div class="alert alert-success mt-4 text-center">
         <h5>¡Bienvenido a <strong>TicaShop LATAM</strong> 🎉!</h5>

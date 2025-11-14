@@ -7,8 +7,7 @@
         <div class="card mt-4">
             <div class="card-body text-center">
                 <h4 class="text-primary">¡Hola {{ usuario.username }}! 🎉</h4>
-                <p>Panel de cliente funcionando correctamente.</p>
-                <p><strong>Rol:</strong> {{ usuario.rol }}</p>
+                <p>Bienvenido a tu panel. Desde aquí puedes ver los productos y gestionar tus compras.</p>
                 <p><strong>Total de Productos Disponibles:</strong> {{ total_productos }}</p>
             </div>
         </div>
@@ -18,36 +17,59 @@
 <div class="row mt-4">
     <div class="col-12">
         <h3>Productos Disponibles</h3>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Foto</th>
-                    <th>Nombre</th>
-                    <th>Precio</th>
-                    <th>Stock</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for producto in productos %}
-                <tr>
-                    <td>
-                        {% if producto.foto %}
-                            <img src="{{ producto.foto.url }}" alt="{{ producto.nombre }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
-                        {% else %}
-                            <img src="https://via.placeholder.com/50" alt="Sin foto" style="width: 50px; height: 50px; border-radius: 5px;">
-                        {% endif %}
-                    </td>
-                    <td>{{ producto.nombre }}</td>
-                    <td>${{ producto.precio_unitario|floatformat:0 }}</td>
-                    <td>{{ producto.stock }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4" class="text-center">No hay productos disponibles</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Foto</th>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th style="width: 150px;">Acción</th> </tr>
+                </thead>
+                <tbody>
+                    {% for producto in productos %}
+                    <tr>
+                        <td>
+                            {% if producto.foto %}
+                                <img src="{{ producto.foto.url }}" alt="{{ producto.nombre }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
+                            {% else %}
+                                <img src="https://via.placeholder.com/50" alt="Sin foto" style="width: 50px; height: 50px; border-radius: 5px;">
+                            {% endif %}
+                        </td>
+                        <td>{{ producto.nombre }}</td>
+                        <td>${{ producto.precio_unitario|floatformat:0 }}</td>
+                        <td>{{ producto.stock }}</td>
+                        
+                        <td>
+                            {% if producto.stock > 0 %}
+                            <form action="{% url 'ventas:cliente_add_to_cart' producto.id %}" method="POST" class="d-flex">
+                                {% csrf_token %}
+                                <input type="number" 
+                                       name="quantity" 
+                                       value="1" 
+                                       min="1" 
+                                       max="{{ producto.stock }}" 
+                                       class="form-control form-control-sm" 
+                                       style="width: 60px;"
+                                       required>
+                                <button type="submit" class="btn btn-primary btn-sm ms-2" title="Añadir al carrito">
+                                    <i class="fas fa-cart-plus"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="badge bg-secondary">Sin Stock</span>
+                            {% endif %}
+                        </td>
+                        </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No hay productos disponibles</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

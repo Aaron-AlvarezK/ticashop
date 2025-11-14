@@ -47,26 +47,21 @@
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
             <div class="col-md-3 col-lg-2 sidebar d-md-block p-0">
                 <div class="position-sticky pt-3">
-                    <!-- Logo -->
                     <div class="text-center text-white logo-section">
                         <h4><i class="fas fa-store"></i> TicaShop</h4>
                         <small class="text-muted">LATAM</small>
                     </div>
                     
-                    <!-- Menú de navegación -->
                     <ul class="nav flex-column">
-                        <!-- Dashboard (todos los roles) -->
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
-                                href="{% url 'dashboard' %}">
+                            <a class="nav-link {% if request.resolver_match.view_name == 'usuarios:dashboard' %}active{% endif %}" 
+                               href="{% url 'usuarios:dashboard' %}">
                                 <i class="fas fa-tachometer-alt"></i> Dashboard
                             </a>
                         </li>
                         
-                        <!-- Solo Administrador -->
                         {% if request.user.rol == 'Administrador' %}
                         <li class="nav-item">
                             <a class="nav-link" href="/admin/">
@@ -74,68 +69,77 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'listar_usuarios' %}active{% endif %}" 
-                                href="{% url 'listar_usuarios' %}">
+                            <a class="nav-link {% if request.resolver_match.view_name == 'usuarios:listar_usuarios' %}active{% endif %}" 
+                               href="{% url 'usuarios:listar_usuarios' %}">
                                 <i class="fas fa-users"></i> Usuarios
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'listar_proveedores' %}active{% endif %}" 
-                                href="{% url 'listar_proveedores' %}">
+                            <a class="nav-link {% if request.resolver_match.view_name == 'clientes:listar_proveedores' %}active{% endif %}" 
+                               href="{% url 'clientes:listar_proveedores' %}">
                                 <i class="fas fa-truck"></i> Proveedores
                             </a>
                         </li>
                         {% endif %}
                         
-                        <!-- Administrador y Vendedor -->
                         {% if request.user.rol == 'Administrador' or request.user.rol == 'Vendedor' %}
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'listar_productos' %}active{% endif %}" 
-                                href="{% url 'listar_productos' %}">
+                            <a class="nav-link {% if request.resolver_match.view_name == 'productos:listar_productos' %}active{% endif %}" 
+                               href="{% url 'productos:listar_productos' %}">
                                 <i class="fas fa-box"></i> Productos
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'listar_pedidos' %}active{% endif %}" 
-                                href="{% url 'listar_pedidos' %}">
+                            <a class="nav-link {% if request.resolver_match.view_name == 'ventas:listar_pedidos' %}active{% endif %}" 
+                               href="{% url 'ventas:listar_pedidos' %}">
                                 <i class="fas fa-shopping-cart"></i> Pedidos
                             </a>
                         </li>
                         {% endif %}
                         
-                        <!-- Facturas (todos por ahora) -->
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.url_name == 'listar_documentos' %}active{% endif %}" 
-                                href="{% url 'listar_documentos' %}">
+                            <a class="nav-link {% if request.resolver_match.view_name == 'documentos:listar_documentos' %}active{% endif %}" 
+                               href="{% url 'documentos:listar_documentos' %}">
                                 <i class="fas fa-file-invoice"></i> Facturas y Boletas
                             </a>
                         </li>
                     </ul>
-                </div>
+                    </div>
             </div>
 
-            <!-- Main content -->
             <div class="col-md-9 col-lg-10 ml-sm-auto px-4 py-4">
-                <!-- Navbar superior -->
                 <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4 shadow-sm rounded">
                     <div class="container-fluid">
                         <span class="navbar-brand mb-0 h1">
                             <i class="fas fa-chart-line"></i> Panel de Control
                         </span>
+                        
                         <div class="navbar-nav ms-auto align-items-center">
+                            
+                            {% if request.user.rol == 'Cliente' %}
+                            <a class="nav-link me-3 text-dark position-relative" href="{% url 'ventas:cliente_view_cart' %}">
+                                <i class="fas fa-shopping-cart fs-5"></i>
+                                {% if request.session.cart %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6em;">
+                                    {{ request.session.cart|length }}
+                                </span>
+                                {% endif %}
+                            </a>
+                            {% endif %}
+
                             <span class="navbar-text me-3">
                                 <i class="fas fa-user-circle"></i> 
                                 <strong>{{ request.user.get_full_name|default:request.user.username }}</strong> 
                                 <span class="badge bg-primary">{{ request.user.rol }}</span>
                             </span>
-                            <a class="btn btn-outline-danger btn-sm" href="{% url 'logout' %}">
+
+                            <a class="btn btn-outline-danger btn-sm" href="{% url 'usuarios:logout' %}">
                                 <i class="fas fa-sign-out-alt"></i> Salir
                             </a>
                         </div>
                     </div>
                 </nav>
 
-                <!-- Mensajes del sistema -->
                 {% if messages %}
                 <div class="messages">
                     {% for message in messages %}
@@ -147,7 +151,6 @@
                 </div>
                 {% endif %}
 
-                <!-- Contenido específico de cada dashboard -->
                 {% block content %}
                 {% endblock %}
             </div>

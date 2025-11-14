@@ -5,7 +5,7 @@
 
     {% if request.user.rol == 'Administrador' %}
     <div class="text-end mb-3">
-        <a href="{% url 'crear_proveedor' %}" class="btn btn-success">
+        <a href="{% url 'clientes:crear_proveedor' %}" class="btn btn-success">
             <i class="fas fa-plus"></i> Nuevo Proveedor
         </a>
     </div>
@@ -32,10 +32,10 @@
                 <td>{{ proveedor.telefono }}</td>
                 {% if request.user.rol == 'Administrador' %}
                 <td>
-                    <a href="{% url 'editar_proveedor' proveedor.id %}" class="btn btn-warning btn-sm">
+                    <a href="{% url 'clientes:editar_proveedor' proveedor.id %}" class="btn btn-warning btn-sm">
                         <i class="fas fa-edit"></i>
                     </a>
-                    <a href="{% url 'eliminar_proveedor' proveedor.id %}" class="btn btn-danger btn-sm" 
+                    <a href="{% url 'clientes:eliminar_proveedor' proveedor.id %}" class="btn btn-danger btn-sm" 
                         onclick="return confirm('¿Seguro que deseas eliminar este proveedor?')">
                         <i class="fas fa-trash"></i>
                     </a>

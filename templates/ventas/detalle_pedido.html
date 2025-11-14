@@ -6,16 +6,14 @@
 {% block content %}
 <div class="container-fluid mt-4">
     
-    <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-file-earmark-text"></i> Detalle del Pedido #{{ pedido.id }}</h2>
-        <a href="{% url 'listar_pedidos' %}" class="btn btn-secondary">
+        <a href="{% url 'ventas:listar_pedidos' %}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Volver
         </a>
     </div>
 
     <div class="row">
-        <!-- Información General -->
         <div class="col-md-6 mb-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
@@ -42,9 +40,7 @@
             </div>
         </div>
 
-        <!-- Resumen Financiero -->
         <div class="col-md-6 mb-4">
-            <!-- Resumen Financiero -->
             <div class="card shadow-sm mb-4">
             <div class="card-header bg-success text-white">Resumen Financiero</div>
             <div class="card-body">
@@ -57,7 +53,6 @@
         </div>
     </div>
 
-    <!-- Productos del Pedido -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-dark text-white">
             <i class="bi bi-box-seam"></i> Productos del Pedido
@@ -94,7 +89,6 @@
         </div>
     </div>
 
-    <!-- Documento Asociado -->
     {% if documento %}
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-info text-white">
@@ -107,21 +101,20 @@
                     <span class="{{ documento.estado|lower }}">{{ documento.estado }}</span>
                 </p>
                 <p><strong>Total:</strong> ${{ documento.total|floatformat:0 }}</p>
-                <a href="{% url 'detalle_documento' documento.id %}" class="btn btn-primary btn-sm">
+                <a href="{% url 'documentos:detalle_documento' documento.id %}" class="btn btn-primary btn-sm">
                     <i class="bi bi-eye"></i> Ver Documento
                 </a>
             </div>
         </div>
     {% endif %}
 
-<!-- Acciones -->
 <div class="card shadow-sm">
     <div class="card-body text-center">
         {% if pedido.estado == 'Pendiente' and detalles %}
-            <a href="{% url 'agregar_productos_pedido' pedido.id %}" class="btn btn-warning btn-lg me-2">
+            <a href="{% url 'ventas:agregar_productos_pedido' pedido.id %}" class="btn btn-warning btn-lg me-2">
                 <i class="bi bi-pencil"></i> Editar Pedido
             </a>
-            <form method="post" action="{% url 'confirmar_pedido' pedido.id %}" style="display:inline;">
+            <form method="post" action="{% url 'ventas:confirmar_pedido' pedido.id %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('¿Confirmar este pedido y generar documento?')">
                     <i class="bi bi-check-circle"></i> Confirmar Pedido
@@ -129,9 +122,9 @@
             </form>
         
         {% elif pedido.estado == 'Procesando' %}
-            <a href="{% url 'marcar_pedido_enviado' pedido.id %}" 
-                class="btn btn-success btn-lg"
-                onclick="return confirm('¿Confirmar que el pedido ha sido enviado?');">
+            <a href="{% url 'ventas:marcar_pedido_enviado' pedido.id %}" 
+               class="btn btn-success btn-lg"
+               onclick="return confirm('¿Confirmar que el pedido ha sido enviado?');">
                 <i class="bi bi-truck"></i> Marcar como Enviado
             </a>
         

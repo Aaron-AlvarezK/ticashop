@@ -31,7 +31,7 @@ def crear_producto(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Producto creado exitosamente.')
-            return redirect('listar_productos')
+            return redirect('productos:listar_productos')
     else:
         form = ProductoForm()
     return render(request, 'productos/crear_producto.html', {'form': form})
@@ -46,7 +46,7 @@ def editar_producto(request, producto_id):
         if form.is_valid():
             form.save()
             messages.success(request, 'Producto actualizado exitosamente.')
-            return redirect('listar_productos')
+            return redirect('productos:listar_productos')
     else:
         form = ProductoForm(instance=producto)
     return render(request, 'productos/editar_producto.html', {'form': form, 'producto': producto})
@@ -58,4 +58,4 @@ def eliminar_producto(request, producto_id):
     producto = get_object_or_404(Producto, id=producto_id)
     producto.delete()
     messages.success(request, 'Producto eliminado exitosamente.')
-    return redirect('listar_productos')
+    return redirect('productos:listar_productos')

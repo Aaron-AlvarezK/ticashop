@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 
+app_name = 'ventas'
 urlpatterns = [
     # =========================
     # LISTAR PEDIDOS
@@ -36,4 +37,11 @@ urlpatterns = [
     # =========================
     path('estadisticas/', views.estadisticas_ventas, name='estadisticas_ventas'),
     path('exportar-excel/', views.exportar_ventas_excel, name='exportar_ventas_excel'),
+
+    path('cliente/cart/', views.cliente_view_cart, name='cliente_view_cart'),
+    path('cliente/cart/add/<int:producto_id>/', views.cliente_add_to_cart, name='cliente_add_to_cart'),
+    path('cliente/cart/remove/<int:producto_id>/', views.cliente_remove_from_cart, name='cliente_remove_from_cart'),
+    
+    # URL para la página de checkout del cliente
+    path('cliente/checkout/', views.cliente_checkout, name='cliente_checkout'),
 ]

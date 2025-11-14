@@ -31,7 +31,7 @@ def crear_documento_desde_pedido(request, pedido_id):
     # Verificar si ya tiene documento
     if hasattr(pedido, 'documento'):
         messages.warning(request, 'Este pedido ya tiene un documento asociado.')
-        return redirect('detalle_documento', documento_id=pedido.documento.id)
+        return redirect('documentos:detalle_documento', documento_id=pedido.documento.id)
     
     if request.method == 'POST':
         form = DocumentoVentaForm(request.POST)
@@ -71,7 +71,7 @@ def crear_documento_desde_pedido(request, pedido_id):
                     )
                 
                 messages.success(request, f'{documento.tipo_documento} #{documento.folio} creada exitosamente.')
-                return redirect('detalle_documento', documento_id=documento.id)
+                return redirect('documentos:detalle_documento', documento_id=documento.id)
     else:
         form = DocumentoVentaForm(initial={'cliente': pedido.cliente})
     
@@ -113,11 +113,11 @@ def registrar_pago(request, documento_id):
             # Validar que no se pague más del saldo pendiente
             if pago.monto_pagado > documento.saldo_pendiente:
                 messages.error(request, f'El monto excede el saldo pendiente (${documento.saldo_pendiente})')
-                return redirect('registrar_pago', documento_id=documento.id)
+                return redirect('documentos:registrar_pago', documento_id=documento.id)
             
             pago.save()
             messages.success(request, 'Pago registrado exitosamente.')
-            return redirect('detalle_documento', documento_id=documento.id)
+            return redirect('documentos:detalle_documento', documento_id=documento.id)
     else:
         form = PagoForm(documento=documento, initial={
             'monto_pagado': documento.saldo_pendiente
@@ -143,7 +143,7 @@ def anular_documento(request, documento_id):
             documento.estado = 'Anulada'
             documento.save()
             messages.success(request, f'{documento.tipo_documento} #{documento.folio} anulada.')
-        return redirect('listar_documentos')
+        return redirect('documentos:listar_documentos')
     
     return render(request, 'documentos/confirmar_anular.html', {'documento': documento})
 
@@ -157,11 +157,11 @@ from decimal import Decimal
 @transaction.atomic
 def crear_documento_desde_pedido(request, pedido_id):
     pedido = get_object_or_404(Pedido.objects.select_related('cliente').prefetch_related('detalles__producto'),
-                               id=pedido_id)
+                                id=pedido_id)
 
     if hasattr(pedido, 'documento'):
         messages.warning(request, 'Este pedido ya tiene un documento asociado.')
-        return redirect('detalle_documento', documento_id=pedido.documento.id)
+        return redirect('documentos:detalle_documento', documento_id=pedido.documento.id)
 
     if request.method == 'POST':
         form = DocumentoVentaForm(request.POST)
@@ -211,7 +211,7 @@ def crear_documento_desde_pedido(request, pedido_id):
                     costo_unitario_venta=dp.producto.costo_unitario,
                 )
             
-            return redirect('detalle_documento', documento_id=doc.id)
+            return redirect('documentos:detalle_documento', documento_id=doc.id)
     else:
         form = DocumentoVentaForm(initial={'cliente': pedido.cliente})
 

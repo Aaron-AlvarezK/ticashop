@@ -5,7 +5,42 @@ from apps.productos.models import Producto
 from apps.documentos.models import DocumentoVenta
 from datetime import date
 from apps.documentos.models import DocumentoVenta, DetalleDocumento  
+from django import forms
+from apps.clientes.models import Cliente 
 
+class CheckoutForm(forms.ModelForm):
+    """
+    Este formulario toma los datos del modelo Cliente
+    para rellenar la página de checkout.
+    """
+    class Meta:
+        model = Cliente
+        # Campos que le pides al cliente para la compra
+        fields = [
+            'razon_social', 
+            'rut', 
+            'direccion', 
+            'email_facturacion', 
+            'giro'
+        ]
+        
+        # Opcional: Esto es para que se vean bien con Bootstrap
+        widgets = {
+            'razon_social': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Empresa S.A.'}),
+            'rut': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '76.123.456-K'}),
+            'direccion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Calle Falsa 123, Comuna, Santiago'}),
+            'email_facturacion': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'facturacion@empresa.cl'}),
+            'giro': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Venta de productos...'}),
+        }
+        
+        # Opcional: Etiquetas más amigables
+        labels = {
+            'razon_social': 'Razón Social',
+            'rut': 'RUT',
+            'direccion': 'Dirección de Facturación / Envío',
+            'email_facturacion': 'Email de Facturación',
+            'giro': 'Giro',
+        }
 
 class PedidoForm(forms.ModelForm):
     class Meta:

@@ -1,0 +1,49 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-user-check text-primary"></i> Confirmar Compra</h2>
+    <p>Revisa tus datos de facturación y el resumen de tu pedido antes de finalizar.</p>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <h3>Datos de Facturación</h3>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        {% csrf_token %}
+                        
+                        {{ form.as_p }}
+                        
+                        <hr>
+                        <button type="submit" class="btn btn-success btn-lg w-100">
+                            <i class="fas fa-lock"></i> Finalizar Compra
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <h3>Resumen de tu Pedido</h3>
+            <div class="card">
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for item in cart_items %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{{ item.producto.nombre }} (x{{ item.cantidad }})</span>
+                            <strong>${{ item.subtotal|floatformat:0 }}</strong>
+                        </li>
+                        {% endfor %}
+                        
+                        <li class="list-group-item d-flex justify-content-between fs-4 bg-light">
+                            <strong>Total</strong>
+                            <strong class="text-success">${{ total_carrito|floatformat:0 }}</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

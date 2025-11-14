@@ -95,14 +95,14 @@ def dashboard(request):
             return render(request, 'dashboard/cliente_dashboard.html', context)
 
     # Si no tiene rol válido
-    return redirect('login')
+    return redirect('usuarios:login')
 
 
 # ========== LOGOUT PERSONALIZADO ==========
 def custom_logout(request):
     logout(request)
     messages.success(request, 'Has cerrado sesión correctamente.')
-    return redirect('login')
+    return redirect('usuarios:login')
 
 
 # ========== CRUD DE USUARIOS (solo admin) ==========
@@ -119,7 +119,7 @@ def crear_usuario(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Usuario creado exitosamente.')
-            return redirect('listar_usuarios')
+            return redirect('usuarios:listar_usuarios')
     else:
         form = CrearUsuarioForm()
     return render(request, 'usuarios/crear_usuario.html', {'form': form})
@@ -134,7 +134,7 @@ def editar_usuario(request, user_id):
         if form.is_valid():
             form.save()
             messages.success(request, 'Usuario actualizado correctamente.')
-            return redirect('listar_usuarios')
+            return redirect('usuarios:listar_usuarios')
     else:
         form = EditarUsuarioForm(instance=usuario)
     
@@ -148,6 +148,6 @@ def eliminar_usuario(request, user_id):
     if request.method == 'POST':
         usuario.delete()
         messages.success(request, 'Usuario eliminado correctamente.')
-        return redirect('listar_usuarios')
+        return redirect('usuarios:listar_usuarios')
     
     return render(request, 'usuarios/confirmar_eliminar.html', {'usuario': usuario})

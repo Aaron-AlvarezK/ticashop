@@ -21,7 +21,7 @@ def crear_proveedor(request):
         if form.is_valid():
             form.save()
             messages.success(request, '✅ Proveedor creado correctamente.')
-            return redirect('listar_proveedores')
+            return redirect('clientes:listar_proveedores')
     else:
         form = ProveedorForm()
     return render(request, 'clientes/crear_proveedor.html', {'form': form})
@@ -35,7 +35,7 @@ def editar_proveedor(request, proveedor_id):
         if form.is_valid():
             form.save()
             messages.success(request, '✅ Proveedor actualizado correctamente.')
-            return redirect('listar_proveedores')
+            return redirect('clientes:listar_proveedores')
     else:
         form = ProveedorForm(instance=proveedor)
     return render(request, 'clientes/editar_proveedor.html', {'form': form})
@@ -46,4 +46,4 @@ def eliminar_proveedor(request, proveedor_id):
     proveedor = get_object_or_404(Proveedor, id=proveedor_id)
     proveedor.delete()
     messages.success(request, '🗑️ Proveedor eliminado correctamente.')
-    return redirect('listar_proveedores')
+    return redirect('clientes:listar_proveedores')

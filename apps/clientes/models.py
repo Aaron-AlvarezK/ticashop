@@ -1,6 +1,17 @@
 from django.db import models
 
+from apps.usuarios.models import Usuario  # <--- IMPORTACIÓN AÑADIDA
+
 class Cliente(models.Model):
+    # --- CAMPO AÑADIDO ---
+    # Esta es la conexión clave con el modelo Usuario
+    user = models.OneToOneField(
+        Usuario, 
+        on_delete=models.CASCADE, 
+        related_name='perfil_cliente'
+    )
+    # ---------------------
+    
     rut = models.CharField(max_length=12, unique=True)
     razon_social = models.CharField(max_length=255)
     giro = models.CharField(max_length=255, blank=True, null=True)
@@ -14,6 +25,7 @@ class Cliente(models.Model):
         db_table = 'clientes'
         verbose_name = 'Cliente'
         verbose_name_plural = 'Clientes'
+
 
 class Proveedor(models.Model):
     rut = models.CharField(max_length=12, unique=True)

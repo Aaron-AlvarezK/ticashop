@@ -7,15 +7,13 @@
 {% block content %}
 <div class="container-fluid mt-4">
 
-    <!-- Encabezado -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="bi bi-graph-up"></i> Estadísticas de Ventas</h2>
-        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+        <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Volver al Dashboard
         </a>
     </div>
 
-    <!-- Resumen de ventas -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card shadow-sm">
@@ -35,7 +33,6 @@
         </div>
     </div>
 
-    <!-- Filtros -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-primary text-white">
             <i class="bi bi-funnel"></i> Filtrar por Fecha
@@ -59,15 +56,13 @@
         </div>
     </div>
 
-    <!-- Botón de exportar -->
     <div class="text-end mb-3">
-        <a href="{% url 'exportar_ventas_excel' %}?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}" 
+        <a href="{% url 'ventas:exportar_ventas_excel' %}?fecha_desde={{ fecha_desde }}&fecha_hasta={{ fecha_hasta }}" 
            class="btn btn-success btn-lg">
             <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
         </a>
     </div>
 
-    <!-- Tabla de ventas -->
     <div class="card shadow-sm">
         <div class="card-header bg-dark text-white">
             <i class="bi bi-table"></i> Listado de Ventas (Pedidos Enviados)
@@ -105,7 +100,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        <a href="{% url 'detalle_pedido' pedido.id %}" class="btn btn-sm btn-primary">
+                                        <a href="{% url 'ventas:detalle_pedido' pedido.id %}" class="btn btn-sm btn-primary">
                                             <i class="bi bi-eye"></i> Ver
                                         </a>
                                     </td>
