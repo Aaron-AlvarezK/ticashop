@@ -12,5 +12,4 @@ urlpatterns = [
     path('ventas/', include('apps.ventas.urls')),
     path('productos/', include('apps.productos.urls')),
     path('documentos/', include('apps.documentos.urls')),
-    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
