@@ -5,7 +5,7 @@ from django.db import transaction, models
 from decimal import Decimal
 from datetime import timedelta, date,timezone
 from django.utils import timezone
-
+from datetime import datetime
 from apps.ventas.models import Pedido, DetallePedido
 from apps.ventas.forms import PedidoForm, TipoDocumentoForm, BoletaForm, FacturaForm
 from apps.productos.models import Producto
@@ -552,13 +552,23 @@ def exportar_ventas_excel(request):
                 .select_related('cliente', 'usuario', 'documentoventa')
                 .order_by('-fecha_creacion'))
 
-    fecha_desde = request.GET.get('fecha_desde')
-    fecha_hasta = request.GET.get('fecha_hasta')
 
-    if fecha_desde:
-        pedidos = pedidos.filter(fecha_creacion__date__gte=fecha_desde)
-    if fecha_hasta:
-        pedidos = pedidos.filter(fecha_creacion__date__lte=fecha_hasta)
+    fecha_desde_str = request.GET.get('fecha_desde')
+    fecha_hasta_str = request.GET.get('fecha_hasta')
+
+    if fecha_desde_str:
+        try:
+            fecha_desde = datetime.strptime(fecha_desde_str, "%Y-%m-%d").date()
+            pedidos = pedidos.filter(fecha_creacion__date__gte=fecha_desde)
+        except ValueError:
+            messages.error(request, "⚠️ Fecha desde inválida. Usa formato YYYY-MM-DD.")
+
+    if fecha_hasta_str:
+        try:
+            fecha_hasta = datetime.strptime(fecha_hasta_str, "%Y-%m-%d").date()
+            pedidos = pedidos.filter(fecha_creacion__date__lte=fecha_hasta)
+        except ValueError:
+            messages.error(request, "⚠️ Fecha hasta inválida. Usa formato YYYY-MM-DD.")
 
     wb = Workbook()
     ws = wb.active
