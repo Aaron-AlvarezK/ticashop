@@ -82,6 +82,17 @@ def dashboard(request):
             'pedidos_completados': pedidos_completados,
         }
         return render(request, 'dashboard/tesoreria_dashboard.html', context)
+    
+    elif rol == 'Cliente':
+            total_productos = Producto.objects.filter(activo=True).count()
+            productos = Producto.objects.filter(activo=True)
+            
+            context = {
+                'usuario': usuario,
+                'total_productos': total_productos,
+                'productos': productos,
+            }
+            return render(request, 'dashboard/cliente_dashboard.html', context)
 
     # Si no tiene rol válido
     return redirect('login')

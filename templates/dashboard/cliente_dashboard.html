@@ -9,8 +9,37 @@
                 <h4 class="text-primary">¡Hola {{ usuario.username }}! 🎉</h4>
                 <p>Panel de cliente funcionando correctamente.</p>
                 <p><strong>Rol:</strong> {{ usuario.rol }}</p>
+                <p><strong>Total de Productos Disponibles:</strong> {{ total_productos }}</p>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <h3>Productos Disponibles</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for producto in productos %}
+                <tr>
+                    <td>{{ producto.nombre }}</td>
+                    <td>${{ producto.precio }}</td>
+                    <td>{{ producto.stock }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center">No hay productos disponibles</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}
