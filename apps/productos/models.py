@@ -19,6 +19,7 @@ class Producto(models.Model):
     codigo = models.CharField(max_length=50, unique=True, verbose_name='Código')
     nombre = models.CharField(max_length=255)
     descripcion = models.TextField(blank=True, null=True, verbose_name='Descripción')
+    foto = models.ImageField(upload_to='images/', blank=True, null=True, verbose_name='Foto')
     
     # Categorización
     categoria = models.ForeignKey(

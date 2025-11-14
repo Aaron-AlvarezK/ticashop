@@ -26,6 +26,7 @@
             <table class="table table-hover">
                 <thead class="table-dark">
                     <tr>
+                        <th>Foto</th>
                         <th>Código</th>
                         <th>Nombre</th>
                         <th>Categoría</th>
@@ -37,22 +38,29 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for p in productos %}
+                    {% for producto in productos %}
                     <tr>
-                        <td>{{ p.codigo }}</td>
-                        <td>{{ p.nombre }}</td>
-                        <td>{{ p.categoria.nombre|default:"Sin categoría" }}</td>
-                        <td>{{ p.proveedor.razon_social|default:"Sin proveedor" }}</td>
-                        <td>${{ p.precio_unitario|floatformat:0 }}</td>
                         <td>
-                            {% if p.tiene_stock_bajo %}
-                                <span class="badge bg-danger">{{ p.stock }}</span>
+                            {% if producto.foto %}
+                                <img src="{{ producto.foto.url }}" alt="{{ producto.nombre }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
                             {% else %}
-                                {{ p.stock }}
+                                <img src="https://via.placeholder.com/50" alt="Sin foto" style="width: 50px; height: 50px; border-radius: 5px;">
+                            {% endif %}
+                        </td>
+                        <td>{{ producto.codigo }}</td>
+                        <td>{{ producto.nombre }}</td>
+                        <td>{{ producto.categoria.nombre|default:"Sin categoría" }}</td>
+                        <td>{{ producto.proveedor.razon_social|default:"Sin proveedor" }}</td>
+                        <td>${{ producto.precio_unitario|floatformat:0 }}</td>
+                        <td>
+                            {% if producto.tiene_stock_bajo %}
+                                <span class="badge bg-danger">{{ producto.stock }}</span>
+                            {% else %}
+                                {{ producto.stock }}
                             {% endif %}
                         </td>
                         <td>
-                            {% if p.activo %}
+                            {% if producto.activo %}
                                 <span class="badge bg-success">Activo</span>
                             {% else %}
                                 <span class="badge bg-secondary">Inactivo</span>
@@ -60,10 +68,10 @@
                         </td>
                         {% if request.user.rol == 'Administrador' %}
                         <td>
-                            <a href="{% url 'editar_producto' p.id %}" class="btn btn-sm btn-warning">
+                            <a href="{% url 'editar_producto' producto.id %}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a href="{% url 'eliminar_producto' p.id %}" class="btn btn-sm btn-danger"
+                            <a href="{% url 'eliminar_producto' producto.id %}" class="btn btn-sm btn-danger"
                             onclick="return confirm('¿Eliminar este producto?')">
                                 <i class="fas fa-trash"></i>
                             </a>
@@ -72,7 +80,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted">
+                        <td colspan="9" class="text-center text-muted">
                             <i class="fas fa-box-open fa-2x mb-2"></i><br>
                             No hay productos registrados.
                         </td>
