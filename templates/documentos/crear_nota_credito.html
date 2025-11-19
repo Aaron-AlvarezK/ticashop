@@ -1,0 +1,96 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load humanize %}
+{% block title %}Crear Nota de Crédito - Factura #{{ factura.folio }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h3>Crear Nota de Crédito - Factura #{{ factura.folio }}</h3>
+  <p>Factura emitida: {{ factura.fecha_emision|date:"d/m/Y" }} - Total: ${{ factura.total|intcomma }}</p>
+
+  {% if nota_form.non_field_errors %}
+    <div class="alert alert-danger">
+      {{ nota_form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+      {% if debug_info %}
+    <div class="alert alert-secondary mt-2">
+      <strong>DEBUG INFO</strong>
+      <pre>{{ debug_info|safe }}</pre>
+    </div>
+  {% endif %}
+    {% csrf_token %}
+
+    <div class="mb-3">
+      {{ nota_form.fecha_emision.label_tag }} 
+      {{ nota_form.fecha_emision }}
+      {{ nota_form.fecha_emision.errors }}
+    </div>
+    <div class="mb-3">
+      {{ nota_form.motivo.label_tag }} 
+      {{ nota_form.motivo }}
+      {{ nota_form.motivo.errors }}
+    </div>
+
+    <h5>Artículos a devolver</h5>
+
+    {# IMPORTANT: management_form es obligatorio para formsets #}
+    {{ detalles_formset.management_form }}
+
+    <table class="table">
+      <thead>
+        <tr><th>Producto</th><th>Precio</th><th>Cant. original</th><th>Cantidad a devolver</th></tr>
+      </thead>
+      <tbody>
+        {% for form in detalles_formset %}
+          <tr>
+            <td>
+              {{ form.producto_nombre }} 
+              {{ form.producto_id }} 
+              {% if form.producto_id.errors %}<div class="text-danger small">{{ form.producto_id.errors }}</div>{% endif %}
+            </td>
+            <td class="text-end">${{ form.initial.precio_unitario|default:"0"|intcomma }}</td>
+            <td class="text-center">{{ form.initial.cantidad_original }}</td>
+            <td>
+              {{ form.cantidad }}
+              {% if form.cantidad.errors %}<div class="text-danger small">{{ form.cantidad.errors }}</div>{% endif %}
+              {{ form.precio_unitario }} {# hidden input, si lo tienes #}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="text-center text-muted">No hay artículos en la factura.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="mt-3">
+      <button type="submit" class="btn btn-success" id="btn_generar_nc">Generar Nota de Crédito</button>
+      <a href="{% url 'documentos:detalle_documento' factura.id %}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Si quieres mantener la validación cliente, usa los nombres generados por formset:
+  (function(){
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e){
+      // comprobación cliente: sumar inputs donde name termina en '-cantidad'
+      const qtyInputs = Array.from(document.querySelectorAll('input[name$="-cantidad"]'));
+      if (qtyInputs.length === 0) {
+        // si no hay inputs de cantidad, dejamos que el submit continúe (será validado en backend)
+        return;
+      }
+      let total = 0;
+      qtyInputs.forEach(i => total += Number(i.value || 0));
+      if (total <= 0) {
+        e.preventDefault();
+        alert('Debes indicar al menos un artículo con cantidad mayor a 0.');
+      }
+    });
+  })();
+</script>
+{% endblock %}

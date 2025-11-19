@@ -1,0 +1,12 @@
+Hola {{ cliente_nombre }},
+
+Te contactamos de TicaShop Latam para informarte que tu factura N° {{ folio }} por un total de ${{ total|floatformat:0 }} ha vencido.
+
+Fecha de Vencimiento: {{ fecha_vencimiento|date:"d/m/Y" }}
+
+Te agradecemos gestionar el pago a la brevedad posible. Si tienes alguna consulta, no dudes en contactarnos.
+
+Si ya realizaste el pago, por favor ignora este correo.
+
+Saludos,
+El equipo de TicaShop Latam

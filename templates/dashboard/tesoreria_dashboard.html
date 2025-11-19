@@ -1,0 +1,90 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block content %}
+<div class="container-fluid mt-3">
+    <h2><i class="fas fa-hand-holding-usd text-success"></i> Panel de Tesorería</h2>
+    <div class="row mt-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm text-center border-top border-primary border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">TOTAL DE PEDIDOS</h6>
+                    <h3 class="fw-bold">{{ total_pedidos }}</h3>
+                    <i class="fas fa-shopping-cart fa-2x text-primary"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm text-center border-top border-warning border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">PENDIENTES DE PAGO</h6>
+                    <h3 class="fw-bold">{{ pedidos_pendientes }}</h3>
+                    <i class="fas fa-clock fa-2x text-warning"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm text-center border-top border-success border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">PEDIDOS PAGADOS</h6>
+                    <h3 class="fw-bold">{{ pedidos_completados }}</h3>
+                    <i class="fas fa-check-circle fa-2x text-success"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mt-3">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-bolt"></i> Acciones Rápidas
+            </div>
+            <div class="card-body">
+                <a href="{% url 'documentos:listar_documentos' %}" class="btn btn-outline-success m-1">
+                    <i class="fas fa-file-invoice-dollar"></i> Gestionar Cobranza
+                </a>
+                
+                <a href="{% url 'ventas:estadisticas_ventas' %}" class="btn btn-outline-primary m-1">
+                    <i class="fas fa-chart-line"></i> Ver Reportes
+                </a>
+                
+                <a href="{% url 'ventas:exportar_ventas_excel' %}" class="btn btn-outline-info m-1">
+                    <i class="fas fa-file-excel"></i> Exportar Resumen
+                </a>
+
+            </div>
+    </div>
+    
+    <div class="card shadow mt-3">
+        <div class="card-header bg-danger text-white">
+            <i class="fas fa-exclamation-triangle"></i> Alertas de Cobranza
+        </div>
+        <div class="card-body">
+            {% if facturas_vencidas %}
+                <p class="text-danger fw-bold"> {{ facturas_vencidas|length }} Facturas Vencidas. ¡Requieren gestión inmediata!</p>
+            {% else %}
+                <p class="text-success"> No hay facturas vencidas al día de hoy.</p>
+            {% endif %}
+
+            {% if facturas_por_vencer %}
+                <p class="text-warning"> {{ facturas_por_vencer|length }} Facturas por vencer en los próximos 7 días.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Facturas Pendientes de Pago (Emitidas)</h3>
+            <p class="text-muted small">Muestra las facturas que están en estado "Emitida" o "Pago Parcial".</p>
+            
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <a href="{% url 'documentos:listar_documentos' %}" class="btn btn-sm btn-info float-end">Ver todos los documentos</a>
+                    <p class="text-center mt-5 mb-5 text-secondary">
+                        <i class="fas fa-table fa-2x"></i><br>
+                        (Aquí se puede agregar una tabla simplificada de Documentos Venta con saldo pendiente)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

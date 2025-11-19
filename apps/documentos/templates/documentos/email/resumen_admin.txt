@@ -1,0 +1,22 @@
+Resumen de Cobranza del día {{ timezone.localdate }}:
+
+--- FACTURAS POR VENCER (En 3 días) ---
+Total: {{ total_por_vencer }}
+
+{% for doc in facturas_por_vencer %}
+- Folio: {{ doc.folio }} | Cliente: {{ doc.cliente.razon_social }} | Monto: ${{ doc.total|floatformat:0 }}
+{% empty %}
+Ninguna.
+{% endfor %}
+
+--- FACTURAS VENCIDAS ---
+Total: {{ total_vencidas }}
+
+{% for doc in facturas_vencidas %}
+- Folio: {{ doc.folio }} | Cliente: {{ doc.cliente.razon_social }} | Monto: ${{ doc.total|floatformat:0 }} | Venció: {{ doc.fecha_vencimiento|date:"d/m/Y" }}
+{% empty %}
+Ninguna.
+{% endfor %}
+
+---
+Reporte automático TicaShop.

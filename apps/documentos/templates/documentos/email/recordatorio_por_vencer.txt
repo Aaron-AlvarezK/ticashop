@@ -1,0 +1,12 @@
+Hola {{ cliente_nombre }},
+
+Te escribimos de TicaShop Latam para recordarte que tu factura N° {{ folio }} por un total de ${{ total|floatformat:0 }} está próxima a vencer.
+
+Fecha de Vencimiento: {{ fecha_vencimiento|date:"d/m/Y" }}
+
+Por favor, considera esta información para realizar el pago a tiempo.
+
+Si ya realizaste el pago, por favor ignora este correo.
+
+Saludos,
+El equipo de TicaShop Latam

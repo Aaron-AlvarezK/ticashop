@@ -1,0 +1,77 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2><i class="fas fa-shopping-cart text-primary"></i> Mi Carrito de Compras</h2>
+            
+            {% if not cart_items %}
+            <div class="alert alert-info mt-4" role="alert">
+                Tu carrito está vacío. <a href="{% url 'usuarios:dashboard' %}" class="alert-link">¡Empieza a comprar!</a>
+            </div>
+            {% else %}
+            <div class="table-responsive mt-4">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Precio Unitario</th>
+                            <th>Cantidad</th>
+                            <th>Subtotal</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cart_items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if item.producto.foto %}
+                                        <img src="{{ item.producto.foto.url }}" alt="{{ item.producto.nombre }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; margin-right: 15px;">
+                                    {% endif %}
+                                    <span>{{ item.producto.nombre }}</span>
+                                </div>
+                            </td>
+                            <td>${{ item.producto.precio_unitario|floatformat:0 }}</td>
+                            <td>{{ item.cantidad }}</td>
+                            <td><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+                            <td>
+                                <a href="{% url 'ventas:cliente_remove_from_cart' item.producto.id %}" class="btn btn-danger btn-sm" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row mt-4 justify-content-end">
+                <div class="col-md-5">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h4 class="card-title">Resumen del Pedido</h4>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center fs-3">
+                                    <strong>Total:</strong>
+                                    <strong class="text-success">${{ total_carrito|floatformat:0 }}</strong>
+                                </li>
+                            </ul>
+                            <div class="d-grid gap-2 mt-3">
+                                <a href="{% url 'ventas:cliente_checkout' %}" class="btn btn-success btn-lg">
+                                    <i class="fas fa-check"></i> Proceder al Pago
+                                </a>
+                                <a href="{% url 'usuarios:dashboard' %}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left"></i> Seguir Comprando
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

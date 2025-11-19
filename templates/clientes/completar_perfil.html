@@ -1,0 +1,70 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            
+            <div class="alert alert-warning text-center" role="alert">
+                <h4 class="alert-heading"><i class="fas fa-id-card"></i> ¡Un último paso!</h4>
+                <p>Para poder realizar compras, necesitamos que completes tus datos de perfil.</p>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <h3 class="text-center mb-4">Completa tu Perfil de Cliente</h3>
+                    
+                    <form method="POST" novalidate>
+                        {% csrf_token %}
+                        
+                        {{ form.as_p }}
+                        
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-save"></i> Guardar mi Perfil
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Aplica estilos a los 'p' que envuelven los campos del form.as_p */
+    #id_razon_social, 
+    #id_rut, 
+    #id_giro, 
+    #id_direccion, 
+    #id_email_facturacion {
+        display: block;
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        box-sizing: border-box;
+    }
+    textarea#id_direccion {
+        height: 80px;
+    }
+    label {
+        font-weight: 500;
+        display: block;
+        margin-bottom: .3rem;
+    }
+    .helptext {
+        font-size: 0.8em;
+        color: #6c757d;
+        display: block;
+        margin-top: .2rem;
+    }
+    .errorlist {
+        list-style-type: none;
+        padding-left: 0;
+        margin-top: .2rem;
+        color: #dc3545;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}

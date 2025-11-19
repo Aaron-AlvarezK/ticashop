@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="login-container d-flex align-items-center justify-content-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="card card-login">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <h2 class="card-title fw-bold text-primary">Crear Cuenta</h2>
+                            <p class="text-muted">Regístrate como cliente en TicaShop</p>
+                        </div>
+                        
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            
+                            {{ form.as_p }}
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg mt-3">
+                                    Crear mi Cuenta
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="card-footer text-center py-3 bg-light">
+                        ¿Ya tienes una cuenta? 
+                        <a href="{% url 'usuarios:login' %}" class="fw-bold">Inicia Sesión</a>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Aplica estilos a los 'p' que envuelven los campos del form.as_p */
+    #div_id_username, 
+    #div_id_email, 
+    #div_id_password1, 
+    #div_id_password2 {
+        margin-bottom: 1rem;
+    }
+    
+    /* Estilo para las etiquetas */
+    label {
+        font-weight: 500;
+        display: block;
+        margin-bottom: .3rem;
+    }
+    
+    /* Estilo para los inputs */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        box-sizing: border-box; /* Asegura que el padding no afecte el ancho */
+    }
+    
+    /* Estilo para el texto de ayuda (ej. "Your password can't be too similar...") */
+    .helptext {
+        font-size: 0.8em;
+        color: #6c757d;
+        display: block;
+        margin-top: .2rem;
+    }
+    
+    /* Estilo para los mensajes de error */
+    .errorlist {
+        list-style-type: none;
+        padding-left: 0;
+        margin-top: .2rem;
+        color: #dc3545;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}

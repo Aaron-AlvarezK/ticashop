@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalle del Pedido #{{ pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-file-earmark-text"></i> Detalle del Pedido #{{ pedido.id }}</h2>
+        <a href="{% url 'ventas:listar_pedidos' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-info-circle"></i> Información General
+                </div>
+                <div class="card-body">
+                    <p><strong>Pedido #:</strong> {{ pedido.id }}</p>
+                    <p><strong>Cliente:</strong> {{ pedido.cliente.razon_social }}</p>
+                    <p><strong>RUT:</strong> {{ pedido.cliente.rut }}</p>
+                    <p><strong>Vendedor:</strong> {{ pedido.usuario.get_full_name|default:pedido.usuario.username }}</p>
+                    <p><strong>Fecha Creación:</strong> {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Estado:</strong> 
+                        {% if pedido.estado == 'Pendiente' %}
+                            <span class="badge bg-warning text-dark">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Procesando' %}
+                            <span class="badge bg-info">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Completado' %}
+                            <span class="badge bg-success">{{ pedido.estado }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ pedido.estado }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">Resumen Financiero</div>
+            <div class="card-body">
+                <p><strong>Subtotal:</strong> ${{ pedido.documentoventa.neto|floatformat:0 }}</p>
+                <p><strong>IVA (19%):</strong> ${{ pedido.documentoventa.iva|floatformat:0 }}</p>
+                <hr>
+                <p class="fs-4"><strong>Total:</strong> <span class="text-success">${{ pedido.documentoventa.total|floatformat:0 }}</span></p>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-box-seam"></i> Productos del Pedido
+        </div>
+        <div class="card-body">
+            {% if detalles %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Precio Unitario</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detalle in detalles %}
+                                <tr>
+                                    <td>{{ detalle.producto.nombre }}</td>
+                                    <td class="text-center">{{ detalle.cantidad }}</td>
+                                    <td class="text-end">${{ detalle.precio_unitario_venta|floatformat:0 }}</td>
+                                    <td class="text-end"><strong>${{ detalle.subtotal|floatformat:0 }}</strong></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-warning text-center">
+                    <i class="bi bi-exclamation-triangle"></i> Este pedido no tiene productos.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if documento %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-file-earmark-pdf"></i> Documento de Venta Asociado
+            </div>
+            <div class="card-body">
+                <p><strong>Tipo:</strong> {{ documento.tipo_documento }}</p>
+                <p><strong>Folio:</strong> #{{ documento.folio }}</p>
+                <p><strong>Estado:</strong> 
+                    <span class="{{ documento.estado|lower }}">{{ documento.estado }}</span>
+                </p>
+                <p><strong>Total:</strong> ${{ documento.total|floatformat:0 }}</p>
+                <a href="{% url 'documentos:detalle_documento' documento.id %}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-eye"></i> Ver Documento
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-body text-center">
+        {% if pedido.estado == 'Pendiente' and detalles %}
+            <a href="{% url 'ventas:agregar_productos_pedido' pedido.id %}" class="btn btn-warning btn-lg me-2">
+                <i class="bi bi-pencil"></i> Editar Pedido
+            </a>
+            <form method="post" action="{% url 'ventas:confirmar_pedido' pedido.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('¿Confirmar este pedido y generar documento?')">
+                    <i class="bi bi-check-circle"></i> Confirmar Pedido
+                </button>
+            </form>
+        
+        {% elif pedido.estado == 'Procesando' %}
+            <a href="{% url 'ventas:marcar_pedido_enviado' pedido.id %}" 
+               class="btn btn-success btn-lg"
+               onclick="return confirm('¿Confirmar que el pedido ha sido enviado?');">
+                <i class="bi bi-truck"></i> Marcar como Enviado
+            </a>
+        
+        {% elif pedido.estado == 'Enviado' %}
+            <button class="btn btn-info btn-lg" disabled>
+                <i class="bi bi-box-seam"></i> Pedido Enviado
+            </button>
+        
+        {% elif pedido.estado == 'Completado' %}
+            <button class="btn btn-secondary btn-lg" disabled>
+                <i class="bi bi-check-circle"></i> Pedido Completado
+            </button>
+        
+        {% elif pedido.estado == 'Cancelado' %}
+            <button class="btn btn-danger btn-lg" disabled>
+                <i class="bi bi-x-circle"></i> Pedido Cancelado
+            </button>
+        
+        {% else %}
+            <button class="btn btn-secondary btn-lg" disabled>
+                <i class="bi bi-hourglass-split"></i> {{ pedido.estado }}
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+</div>
+{% endblock %}

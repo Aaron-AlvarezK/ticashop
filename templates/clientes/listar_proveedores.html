@@ -1,0 +1,51 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-truck text-primary"></i> Proveedores</h2>
+
+    {% if request.user.rol == 'Administrador' %}
+    <div class="text-end mb-3">
+        <a href="{% url 'clientes:crear_proveedor' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Nuevo Proveedor
+        </a>
+    </div>
+    {% endif %}
+
+    <table class="table table-hover shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>RUT</th>
+                <th>Razón Social</th>
+                <th>Correo</th>
+                <th>Teléfono</th>
+                {% if request.user.rol == 'Administrador' %}
+                <th>Acciones</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for proveedor in proveedores %}
+            <tr>
+                <td>{{ proveedor.rut }}</td>
+                <td>{{ proveedor.razon_social }}</td>
+                <td>{{ proveedor.email_contacto }}</td>
+                <td>{{ proveedor.telefono }}</td>
+                {% if request.user.rol == 'Administrador' %}
+                <td>
+                    <a href="{% url 'clientes:editar_proveedor' proveedor.id %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{% url 'clientes:eliminar_proveedor' proveedor.id %}" class="btn btn-danger btn-sm" 
+                        onclick="return confirm('¿Seguro que deseas eliminar este proveedor?')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted">No hay proveedores registrados</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

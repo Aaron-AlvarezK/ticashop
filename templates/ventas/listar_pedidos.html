@@ -1,0 +1,103 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-shopping-cart text-primary"></i> Gestión de Pedidos</h2>
+        <a href="{% url 'ventas:crear_pedido_inicial' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Nuevo Pedido
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Filtrar por Estado</label>
+                    <select name="estado" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos los estados</option>
+                        {% for key, value in estados %}
+                            <option value="{{ key }}" {% if request.GET.estado == key %}selected{% endif %}>
+                                {{ value }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Cliente</th>
+                            <th>Vendedor</th>
+                            <th>Fecha</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pedido in pedidos %}
+                        <tr>
+                            <td><strong>#{{ pedido.id }}</strong></td>
+                            <td>{{ pedido.cliente.razon_social }}</td>
+                            <td>{{ pedido.usuario.username }}</td>
+                            <td>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                            <td>{{ pedido.cantidad_items }}</td>
+                            <td><strong>${{ pedido.total|floatformat:0 }}</strong></td>
+                            <td>
+                                {% if pedido.estado == 'Pendiente' %}
+                                    <span class="badge bg-warning text-dark">{{ pedido.estado }}</span>
+                                {% elif pedido.estado == 'Procesando' %}
+                                    <span class="badge bg-info">{{ pedido.estado }}</span>
+                                {% elif pedido.estado == 'Completado' %}
+                                    <span class="badge bg-success">{{ pedido.estado }}</span>
+                                {% elif pedido.estado == 'Cancelado' %}
+                                    <span class="badge bg-danger">{{ pedido.estado }}</span>
+                                {% else %}
+                                    <span class="badge bg-primary">{{ pedido.estado }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'ventas:detalle_pedido' pedido.id %}" class="btn btn-sm btn-info" title="Ver detalle">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if pedido.estado == 'Pendiente' %}
+                                    <a href="{% url 'ventas:agregar_productos_pedido' pedido.id %}" class="btn btn-sm btn-warning" title="Agregar productos o generar documento">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted">
+                                <i class="fas fa-inbox fa-3x mb-3"></i>
+                                <p>No hay pedidos registrados</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .badge {
+        font-size: 0.85rem;
+        padding: 0.4em 0.6em;
+    }
+</style>
+{% endblock %}

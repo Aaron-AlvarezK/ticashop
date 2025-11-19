@@ -1,0 +1,181 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2><i class="fas fa-file-invoice text-primary"></i> Nuevo Pedido - Paso 1</h2>
+    <hr>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <strong>Selecciona el Cliente</strong>
+        </div>
+        <div class="card-body">
+            <form method="post" id="form-crear-pedido">
+                {% csrf_token %}
+                
+                <div class="row mb-3 align-items-end">
+                    <div class="col-md-7">
+                        <label class="form-label">Cliente:</label>
+                        {{ form.cliente }}
+                    </div>
+                    <div class="col-md-5">
+                        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalCrearCliente">
+                            <i class="fas fa-plus"></i> Nuevo Cliente
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label">Observaciones (opcional):</label>
+                        {{ form.observaciones }}
+                    </div>
+                </div>
+                
+                <div class="text-end">
+                    <a href="{% url 'ventas:listar_pedidos' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> Continuar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="modalCrearCliente" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabel">
+                    <i class="fas fa-user-plus"></i> Crear Nuevo Cliente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <form id="form-nuevo-cliente">
+                <div id="modal-errors" class="alert alert-danger mx-3" style="display:none;"></div>
+                
+                <div class="modal-body">
+                    <p class="text-muted small">Crea un nuevo cliente. Los campos con (*) son obligatorios.</p>
+                    
+                    {% csrf_token %} <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_rut" class="form-label">RUT*</label>
+                            <input type="text" name="rut" class="form-control" id="id_rut" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_razon_social" class="form-label">Razón Social*</label>
+                            <input type="text" name="razon_social" class="form-control" id="id_razon_social" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_giro" class="form-label">Giro</label>
+                        <input type="text" name="giro" class="form-control" id="id_giro">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_direccion" class="form-label">Dirección</label>
+                        <textarea name="direccion" class="form-control" rows="2" id="id_direccion"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_email_facturacion" class="form-label">Email de Facturación</label>
+                        <input type="email" name="email_facturacion" class="form-control" id="id_email_facturacion">
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="btn-guardar-cliente">
+                        <i class="fas fa-save"></i> Guardar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    
+    const formCliente = document.getElementById('form-nuevo-cliente');
+    const formPedidoClienteSelect = document.getElementById('{{ form.cliente.id_for_label }}');
+    const modalElement = document.getElementById('modalCrearCliente');
+    const modal = new bootstrap.Modal(modalElement);
+    const errorDiv = document.getElementById('modal-errors');
+    const guardarBtn = document.getElementById('btn-guardar-cliente');
+
+    // 1. Escuchar el envío del formulario del modal
+    formCliente.addEventListener('submit', function(e) {
+        e.preventDefault(); // Evitar que la página se recargue
+        guardarBtn.disabled = true;
+        guardarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+        errorDiv.style.display = 'none';
+
+        // 2. Preparar los datos del formulario
+        const formData = new FormData(formCliente);
+        
+        // 3. Enviar los datos a la vista AJAX que creamos
+        fetch("{% url 'clientes:crear_cliente_ajax' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                // El CSRF Token ya está en el formData, no se necesita aquí
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 4. ¡ÉXITO!
+                
+                // Crear la nueva opción para el select
+                const nuevaOpcion = new Option(
+                    `${data.nombre} (${data.rut})`, // Texto (ej: "Empresa S.A. (123.456-K)")
+                    data.id,                        // Valor (ej: 123)
+                    true,                           // defaultSelected
+                    true                            // selected
+                );
+
+                // Añadir la nueva opción al select principal
+                formPedidoClienteSelect.appendChild(nuevaOpcion);
+                
+                // Cerrar el modal
+                modal.hide();
+                
+                // Limpiar el formulario del modal
+                formCliente.reset();
+                
+            } else {
+                // 5. ERROR (Ej. Formulario inválido o RUT duplicado)
+                let errorMsg = 'Error desconocido. Revisa los datos.';
+                if (data.errors) {
+                    try {
+                        // Intentar parsear los errores de validación de Django
+                        const errors = JSON.parse(data.errors);
+                        errorMsg = Object.values(errors).map(err => err[0].message).join('<br>');
+                    } catch(e) {
+                        errorMsg = data.errors.general || JSON.stringify(data.errors);
+                    }
+                }
+                errorDiv.innerHTML = errorMsg;
+                errorDiv.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            // 6. ERROR DE RED
+            errorDiv.innerHTML = 'Error de conexión con el servidor.';
+            errorDiv.style.display = 'block';
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            // 7. Reactivar el botón
+            guardarBtn.disabled = false;
+            guardarBtn.innerHTML = '<i class="fas fa-save"></i> Guardar Cliente';
+        });
+    });
+
+});
+</script>
+{% endblock %}

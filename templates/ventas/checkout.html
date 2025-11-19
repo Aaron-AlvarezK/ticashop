@@ -1,0 +1,140 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2><i class="fas fa-user-check text-primary"></i> Confirmar Compra</h2>
+    <p>Revisa tus datos y el resumen de tu pedido antes de finalizar.</p>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <h3>Datos para tu Documento</h3>
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST" novalidate id="checkout-form">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tipo de Documento</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="tipo_documento" id="tipo_boleta" value="Boleta" checked>
+                                    <label class="form-check-label" for="tipo_boleta">
+                                        <i class="fas fa-receipt"></i> Boleta
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="tipo_documento" id="tipo_factura" value="Factura">
+                                    <label class="form-check-label" for="tipo_factura">
+                                        <i class="fas fa-file-invoice"></i> Factura (Empresa)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.razon_social.id_for_label }}" class="form-label" id="label_razon_social">Nombre Completo</label>
+                            {{ form.razon_social }}
+                            {{ form.razon_social.errors }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.rut.id_for_label }}" class="form-label">RUT</label>
+                                {{ form.rut }}
+                                {{ form.rut.errors }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3" id="giro-field-div" style="display:none;">
+                                <label for="{{ form.giro.id_for_label }}" class="form-label">Giro</label>
+                                {{ form.giro }}
+                                {{ form.giro.errors }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.direccion.label_tag }}
+                            {{ form.direccion }}
+                            {{ form.direccion.errors }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.email_facturacion.label_tag }}
+                                {{ form.email_facturacion }}
+                                {{ form.email_facturacion.errors }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                {{ form.medio_de_pago.label_tag }}
+                                {{ form.medio_de_pago }}
+                                {{ form.medio_de_pago.errors }}
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        <button type="submit" class="btn btn-success btn-lg w-100">
+                            <i class="fas fa-lock"></i> Finalizar Compra
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <h3>Resumen de tu Pedido</h3>
+            <div class="card">
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for item in cart_items %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{{ item.producto.nombre }} (x{{ item.cantidad }})</span>
+                            <strong>${{ item.subtotal|floatformat:0 }}</strong>
+                        </li>
+                        {% endfor %}
+                        
+                        <li class="list-group-item d-flex justify-content-between fs-4 bg-light">
+                            <strong>Total (IVA Incl.)</strong>
+                            <strong class="text-success">${{ total_carrito|floatformat:0 }}</strong>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const radioFactura = document.getElementById('tipo_factura');
+    const radioBoleta = document.getElementById('tipo_boleta');
+    
+    const giroDiv = document.getElementById('giro-field-div');
+    const giroInput = document.getElementById('{{ form.giro.id_for_label }}');
+    const razonSocialLabel = document.getElementById('label_razon_social');
+
+    function toggleDocumentoFields() {
+        if (radioFactura.checked) {
+            // Es Factura
+            razonSocialLabel.textContent = 'Razón Social';
+            giroDiv.style.display = 'block';
+            if (giroInput) giroInput.required = true;
+            
+        } else {
+            // Es Boleta
+            razonSocialLabel.textContent = 'Nombre Completo';
+            giroDiv.style.display = 'none';
+            if (giroInput) giroInput.required = false;
+        }
+    }
+
+    // Añadir listeners
+    radioFactura.addEventListener('change', toggleDocumentoFields);
+    radioBoleta.addEventListener('change', toggleDocumentoFields);
+
+    // Estado inicial al cargar la página
+    toggleDocumentoFields();
+});
+</script>
+{% endblock %}

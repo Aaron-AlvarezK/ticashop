@@ -1,0 +1,175 @@
+{% extends 'dashboard/base_dashboard.html' %}
+{% load humanize %}
+{% block title %}Documento #{{ doc.folio }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <div class="card">
+    <div class="card-body p-3">
+
+      <!-- HEADER: empresa y recuadro derecho -->
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h4 class="mb-1">{{ empresa.nombre }}</h4>
+          <div class="small text-muted">{{ empresa.giro }}</div>
+          <div class="small">{{ empresa.direccion }} - {{ empresa.ciudad }}</div>
+          <div class="small">Tel: {{ empresa.telefono }} &nbsp; Email: {{ empresa.email }}</div>
+        </div>
+
+        {% if is_factura %}
+          <div class="text-end border border-3 border-danger p-3" style="min-width:210px;">
+            <div class="fw-bold text-danger">R.U.T.: {{ empresa.rut }}</div>
+            <div class="fw-bold text-danger h5 mt-1">FACTURA ELECTRÓNICA</div>
+            <div class="h4 fw-bold mt-2">Nº {{ doc.folio }}</div>
+            <div class="small text-muted">S.I.I. - {{ empresa.sucursal }}</div>
+          </div>
+        {% else %}
+          <div class="text-end border p-2" style="min-width:210px; background:#f8f9fa;">
+            <div class="small">BOLETA DE VENTA ELECTRÓNICA</div>
+            <div class="fw-bold">R.U.T.: {{ empresa.rut }}</div>
+            <div class="h5 mt-1">Nº {{ doc.folio }}</div>
+            <div class="small text-muted">{{ empresa.sucursal }}</div>
+          </div>
+        {% endif %}
+      </div>
+
+      <hr>
+
+      <!-- CLIENTE / DATOS DEL DOCUMENTO (diferente para boleta) -->
+      <div class="row">
+        <div class="col-md-8">
+          <div class="border p-3">
+            {% if is_factura %}
+              <div class="fw-bold">SEÑOR(ES):</div>
+              <div>{{ doc.cliente.razon_social }}</div>
+              <div class="mt-2"><strong>R.U.T.:</strong> {{ doc.rut }}</div>
+              <div><strong>Giro:</strong> {{ doc.giro }}</div>
+              <div><strong>Dirección:</strong> {{ doc.direccion }}</div>
+              <div><strong>Comuna / Ciudad:</strong> {{ doc.comuna }} / {{ doc.ciudad }}</div>
+            {% else %}
+              <div class="fw-bold">SEÑOR(ES):</div>
+              <div>{{ doc.cliente.razon_social }}</div>
+              <div class="mt-2"><strong>R.U.T.:</strong> {{ doc.rut|default:doc.cliente.rut|default:"-" }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="p-3">
+            <div><strong>Fecha Emisión:</strong><br>{{ doc.fecha_emision|date:"d/m/Y" }}</div>
+
+            {% if is_factura %}
+              {% if doc.fecha_vencimiento %}
+                <div class="mt-2"><strong>Fecha Vencimiento:</strong><br>{{ doc.fecha_vencimiento|date:"d/m/Y" }}</div>
+              {% endif %}
+              <div class="mt-2"><strong>Forma de Pago:</strong><br>{{ doc.medio_de_pago|default:"Contado" }}</div>
+            {% endif %}
+
+            <div class="mt-2"><strong>Estado:</strong><br>{{ doc.estado }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLA DE ÍTEMS -->
+      <div class="table-responsive mt-3">
+        {% if is_factura %}
+          <table class="table table-bordered">
+            <thead class="table-light">
+              <tr>
+                <th style="width:8%;">Código</th>
+                <th>Descripción</th>
+                <th style="width:10%;">Cantidad</th>
+                <th style="width:12%;">Precio</th>
+                <th style="width:12%;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for it in items %}
+                <tr>
+                  <td class="align-middle">{{ it.producto.codigo|default:"-" }}</td>
+                  <td class="align-middle">
+                    <strong>{{ it.producto.nombre }}</strong>
+                    {% if it.descripcion_extra %}<div class="small text-muted">{{ it.descripcion_extra }}</div>{% endif %}
+                  </td>
+                  <td class="text-center align-middle">{{ it.cantidad }}</td>
+                  <td class="text-end align-middle">${{ it.precio_unitario_venta|floatformat:0|intcomma }}</td>
+                  <td class="text-end align-middle">${{ it.subtotal|floatformat:0|intcomma }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <div class="d-flex justify-content-end">
+            <div style="width:320px;">
+              <div class="d-flex justify-content-between"><div>MONTO NETO</div><div class="text-end">${{ neto|floatformat:0|intcomma }}</div></div>
+              <div class="d-flex justify-content-between mt-2"><div>I.V.A. 19%</div><div class="text-end">${{ iva|floatformat:0|intcomma }}</div></div>
+              <div class="d-flex justify-content-between mt-2"><div>IMPUESTO ADICIONAL</div><div class="text-end">${{ doc.impuesto_adicional|default:0|floatformat:0|intcomma }}</div></div>
+              <hr>
+              <div class="d-flex justify-content-between fw-bold fs-5"><div>TOTAL</div><div class="text-end">${{ total|floatformat:0|intcomma }}</div></div>
+            </div>
+          </div>
+
+        {% else %}
+          <!-- BOLETA layout -->
+          <table class="table table-bordered">
+            <thead class="table-light">
+              <tr>
+                <th style="width:8%;">Cantidad</th>
+                <th style="width:12%;">Unidad</th>
+                <th style="width:12%;">Código</th>
+                <th>Descripción</th>
+                <th style="width:12%;">Valor Unitario</th>
+                <th style="width:10%;">Descuento</th>
+                <th style="width:12%;">Importe Venta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for it in items %}
+                <tr>
+                  <td class="text-center">{{ it.cantidad }}</td>
+                  <td class="text-center">{{ it.producto.unidad|default:"UN" }}</td>
+                  <td class="text-center">{{ it.producto.codigo|default:"-" }}</td>
+                  <td>
+                    <strong>{{ it.producto.nombre }}</strong>
+                    {% if it.descripcion_extra %}<div class="small text-muted">{{ it.descripcion_extra }}</div>{% endif %}
+                  </td>
+                  <td class="text-end">${{ it.precio_unitario_venta|floatformat:0|intcomma }}</td>
+                  <td class="text-end">${{ it.descuento|default:0|floatformat:0|intcomma }}</td>
+                  <td class="text-end">${{ it.subtotal|floatformat:0|intcomma }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <div class="d-flex justify-content-end mt-2">
+            <div style="width:320px;">
+              <div class="d-flex justify-content-between">Otros Cargos:<div>$0</div></div>
+              <div class="d-flex justify-content-between mt-1">Otros Tributos:<div>$0</div></div>
+              <hr>
+              <div class="d-flex justify-content-between fw-bold fs-5"><div>Importe Total</div><div class="text-end">${{ total|floatformat:0|intcomma }}</div></div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- FOOTER -->
+      <div class="row mt-4">
+        <div class="col-md-3">
+          <div class="border p-2 text-center"><small>Timbre Electrónico</small></div>
+        </div>
+        <div class="col-md-9">
+          <div class="small text-muted">Res.99 de 2014 Verifique documento: www.sii.cl</div>
+        </div>
+      </div>
+
+      <div class="mt-3 text-end">
+        {% if is_factura and show_nc_button %}
+          <a href="{% url 'documentos:crear_nota_credito' doc.id %}" class="btn btn-warning btn-sm">Crear Nota de Crédito</a>
+        {% endif %}
+        <a href="{% url 'documentos:listar_documentos' %}" class="btn btn-secondary btn-sm">Volver</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

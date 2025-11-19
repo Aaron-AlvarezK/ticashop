@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Agregar Productos al Pedido #{{ pedido.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cart-plus"></i> Agregar Productos al Pedido #{{ pedido.id }}</h2>
+        <a href="{% url 'ventas:detalle_pedido' pedido.id %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Detalle
+        </a>
+    </div>
+
+    {% if mensaje_error %}
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> {{ mensaje_error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{% if message.tags == 'error' or message.tags == 'warning' %}exclamation-triangle{% elif message.tags == 'success' %}check-circle{% else %}info-circle{% endif %}"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <i class="bi bi-info-circle"></i> Información del Pedido
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Cliente:</strong> {{ pedido.cliente.razon_social }}</p>
+                    {% if pedido.usuario %}
+                        <p><strong>Vendedor:</strong>
+                            {% if pedido.usuario.get_full_name %}
+                                {{ pedido.usuario.get_full_name }}
+                            {% else %}
+                                {{ pedido.usuario.username }}
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        <p><strong>Vendedor:</strong> No asignado</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Tipo de Documento:</strong> 
+                        {% if pedido.documentoventa %}
+                            {{ pedido.documentoventa.tipo_documento }}
+                        {% else %}
+                            <span class="text-muted">No especificado</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Fecha Creación:</strong> {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                </div>
+            </div>
+            
+            {% if pedido.documentoventa %}
+            <hr>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Neto:</strong> ${{ pedido.documentoventa.neto|floatformat:0 }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>IVA (19%):</strong> ${{ pedido.documentoventa.iva|floatformat:0 }}</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Total:</strong> <span class="text-success fs-5">${{ pedido.documentoventa.total|floatformat:0 }}</span></p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            <i class="bi bi-plus-circle"></i> Añadir Producto
+        </div>
+        <div class="card-body">
+            <form method="post" class="mb-4">
+                {% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label for="producto_id" class="form-label">Producto</label>
+                        <select name="producto_id" id="producto_id" class="form-select" required onchange="mostrarStock()">
+                            <option value="">Seleccione un producto</option>
+                            {% for producto in productos %}
+                                <option value="{{ producto.id }}" 
+                                        data-stock="{{ producto.stock }}" 
+                                        data-precio="{{ producto.precio_unitario }}">
+                                    {{ producto.nombre }} - ${{ producto.precio_unitario|floatformat:0 }} (Stock: {{ producto.stock }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="cantidad" class="form-label">Cantidad</label>
+                        <input type="number" name="cantidad" id="cantidad" class="form-control" value="1" min="1" required>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" id="btn-agregar" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle"></i> Agregar
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="stock-info" class="alert mt-3" style="display:none;">
+                    <strong>Stock disponible:</strong> <span id="stock-cantidad">0</span> unidades
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <i class="bi bi-list-check"></i> Productos en el Pedido
+        </div>
+        <div class="card-body">
+            {% if carrito %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Precio Unitario</th>
+                                <th class="text-end">Subtotal</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in carrito %}
+                                <tr>
+                                    <td>{{ item.nombre }}</td>
+                                    <td class="text-center">{{ item.cantidad }}</td>
+                                    <td class="text-end">${{ item.precio|floatformat:0 }}</td>
+                                    <td class="text-end"><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+                                    <td class="text-center">
+                                        <a href="{% url 'ventas:eliminar_producto_carrito' pedido.id item.producto_id %}" 
+                                           class="btn btn-danger btn-sm"
+                                           onclick="return confirm('¿Está seguro de eliminar este producto del pedido?');">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle"></i> Aún no se han agregado productos a este pedido.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" name="confirmar_pedido" class="btn btn-success btn-lg" 
+                    {% if not carrito %}disabled{% endif %}
+                    onclick="return confirm('¿Está seguro de confirmar este pedido y generar el documento de venta?');">
+                <i class="bi bi-check-circle"></i> Confirmar Pedido
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    function mostrarStock() {
+        const select = document.getElementById('producto_id');
+        const option = select.options[select.selectedIndex];
+        const stock = parseInt(option.getAttribute('data-stock'));
+        const stockInfo = document.getElementById('stock-info');
+        const btnAgregar = document.getElementById('btn-agregar');
+        
+        if (!isNaN(stock)) {
+            stockInfo.style.display = 'block';
+            
+            // Cambiar color y mensaje según stock
+            if (stock <= 0) {
+                stockInfo.className = 'alert alert-danger mt-3';
+                stockInfo.innerHTML = '<strong>⚠️ Sin stock disponible</strong>';
+                btnAgregar.disabled = true;
+            } else if (stock <= 5) {
+                stockInfo.className = 'alert alert-warning mt-3';
+                stockInfo.innerHTML = '<strong>⚠️ Stock bajo:</strong> ' + stock + ' unidades';
+                btnAgregar.disabled = false;
+            } else {
+                stockInfo.className = 'alert alert-info mt-3';
+                stockInfo.innerHTML = '<strong>Stock disponible:</strong> ' + stock + ' unidades';
+                btnAgregar.disabled = false;
+            }
+        } else {
+            stockInfo.style.display = 'none';
+            btnAgregar.disabled = false;
+        }
+    }
+
+    // Llamar al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        mostrarStock();
+    });
+</script>
+{% endblock %}
