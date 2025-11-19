@@ -434,8 +434,20 @@ def crear_nota_credito(request, factura_id):
                 original = next((it for it in items_factura if (it.producto and it.producto.id) == prod_id), None)
                 cantidad_orig = original.cantidad if original else 0
 
-                if cantidad_dev < 0 or cantidad_dev > cantidad_orig:
-                    messages.error(request, f'Cantidad inválida para producto {original.producto.nombre if original else prod_id}. Máximo permitido: {cantidad_orig}')
+
+                # Reglas: se permiten devoluciones parciales.
+                # Validar límites: cantidad no negativa y no mayor a la cantidad original.
+                if cantidad_dev < 0:
+                    messages.error(request, f'Cantidad inválida para producto {original.producto.nombre if original else prod_id}.')
+                    return render(request, 'documentos/crear_nota_credito.html', {
+                        'factura': factura,
+                        'nota_form': nota_form,
+                        'detalles_formset': detalles_formset,
+                        'items': items_factura
+                    })
+
+                if cantidad_dev > cantidad_orig:
+                    messages.error(request, f'La cantidad a devolver para "{original.producto.nombre if original and original.producto else prod_id}" no puede ser mayor a la cantidad original ({cantidad_orig}).')
                     return render(request, 'documentos/crear_nota_credito.html', {
                         'factura': factura,
                         'nota_form': nota_form,
@@ -516,6 +528,12 @@ def crear_nota_credito(request, factura_id):
             return redirect('documentos:detalle_nota_credito', nota_id=nota.id)
 
         else:
+            # Si falta la fecha o el motivo, mostramos un mensaje claro
+            if nota_form.errors.get('fecha_emision'):
+                messages.error(request, 'Debes seleccionar una fecha de emisión para la nota de crédito.')
+            if nota_form.errors.get('motivo'):
+                messages.error(request, 'Debes indicar un motivo para la nota de crédito.')
+
             # DEBUG: mostrar errores en consola y pasar info al template
             print("=== DEBUG NotaCredito ===")
             print("NotaForm errors:", nota_form.errors)
@@ -591,3 +609,69 @@ def detalle_nota_credito(request, nota_id):
         'empresa': empresa,
     }
     return render(request, 'documentos/detalle_nota_credito.html', context)
+
+
+@login_required
+def eliminar_detalle_nota_credito(request, nota_id, detalle_id):
+    """Elimina un detalle de una Nota de Crédito, actualiza montos y estado de la factura."""
+    if request.method != 'POST':
+        messages.warning(request, 'Solicitud inválida para eliminar el detalle.')
+        return redirect('documentos:detalle_nota_credito', nota_id=nota_id)
+
+    nota = get_object_or_404(NotaCredito.objects.select_related('factura'), id=nota_id)
+    detalle = get_object_or_404(DetalleNotaCredito, id=detalle_id, nota=nota)
+
+    try:
+        with transaction.atomic():
+            # Restar subtotal del monto de la nota
+            monto_anterior = nota.monto or Decimal('0')
+            subtotal = detalle.subtotal or Decimal('0')
+
+            # Si el detalle fue creado y al crearse se reingresó stock, revertimos ese stock
+            prod = detalle.producto
+            if prod:
+                try:
+                    prod.stock = (prod.stock or 0) - int(detalle.cantidad)
+                    prod.save()
+                except Exception as e:
+                    # No bloqueamos la operación por problemas de stock
+                    print(f"Warning stock revertir fallo: {e}")
+
+            detalle.delete()
+
+            # Recalcular monto de la nota sumando sus detalles restantes
+            nuevo_monto = DetalleNotaCredito.objects.filter(nota=nota).aggregate(total=Sum('subtotal'))['total'] or Decimal('0')
+            nota.monto = nuevo_monto
+            nota.save()
+
+            # Recalcular monto total devuelto para la factura y actualizar estado
+            factura = nota.factura
+            from .models import NotaCredito as NCModel
+            total_devuelto_factura = NCModel.objects.filter(factura=factura).aggregate(s=Sum('monto'))['s'] or Decimal('0')
+
+            if total_devuelto_factura >= (factura.total or Decimal('0')) and total_devuelto_factura > 0:
+                factura.estado = 'Devuelta'
+            elif total_devuelto_factura > 0:
+                factura.estado = 'Devuelta Parcial'
+            else:
+                # Si ya no hay notas de crédito, intentamos restaurar estado lógico
+                # Si la factura está pagada (saldo 0) la marcamos Pagada, si no Emitida
+                try:
+                    saldo = factura.saldo_pendiente
+                except Exception:
+                    saldo = None
+
+                if saldo == 0:
+                    factura.estado = 'Pagada'
+                else:
+                    factura.estado = 'Emitida'
+
+            factura.save()
+
+    except Exception as e:
+        print('Error al eliminar detalle NC:', e)
+        messages.error(request, f'No se pudo eliminar el detalle: {e}')
+        return redirect('documentos:detalle_nota_credito', nota_id=nota.id)
+
+    messages.success(request, f'Detalle eliminado. Monto NC actualizado: ${nota.monto:,}.')
+    return redirect('documentos:detalle_nota_credito', nota_id=nota.id)

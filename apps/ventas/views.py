@@ -265,12 +265,16 @@ def listar_pedidos(request):
     # --- Filtros adicionales (Vendedor/Admin/General) ---
     filtro_usuario = request.GET.get('usuario')
     filtro_cliente = request.GET.get('cliente')
+    filtro_estado = request.GET.get('estado')
 
     if filtro_usuario:
         pedidos = pedidos.filter(usuario__username__icontains=filtro_usuario)
     if filtro_cliente:
         # Nota: este filtro solo funciona si el rol no es 'Cliente', o si se usa el nombre exacto
         pedidos = pedidos.filter(cliente__razon_social__icontains=filtro_cliente)
+    if filtro_estado:
+        # Filtrar por el estado exacto (las opciones vienen de Pedido.ESTADOS_PEDIDO)
+        pedidos = pedidos.filter(estado__iexact=filtro_estado)
     
     # Ordenar y finalizar
     pedidos = pedidos.order_by('-fecha_creacion')
@@ -842,6 +846,39 @@ def marcar_pedido_enviado(request, pedido_id):
     return redirect('ventas:detalle_pedido', pedido_id=pedido.id)
 
 
+@login_required
+def cancelar_pedido(request, pedido_id):
+    """Marca un pedido como Cancelado si su estado lo permite."""
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+
+    # Solo aceptar POST para evitar GET que cambien estado
+    if request.method != 'POST':
+        messages.warning(request, 'Solicitud inválida para cancelar el pedido.')
+        return redirect('ventas:detalle_pedido', pedido_id=pedido.id)
+
+    # Estados que no se pueden cancelar
+    if pedido.estado in ['Completado', 'Cancelado']:
+        messages.warning(request, 'No se puede cancelar un pedido que ya está completado o cancelado.')
+        return redirect('ventas:detalle_pedido', pedido_id=pedido.id)
+
+    # Realizar la cancelación (negocio simple: marcar estado)
+    pedido.estado = 'Cancelado'
+    pedido.save()
+
+    # Opcional: actualizar documento asociado si existe
+    try:
+        if hasattr(pedido, 'documentoventa') and pedido.documentoventa:
+            doc = pedido.documentoventa
+            doc.estado = 'Anulada' if doc.estado != 'Pagada' else doc.estado
+            doc.save()
+    except Exception:
+        # No bloquear la operación por errores en documento
+        pass
+
+    messages.success(request, f'El pedido #{pedido.id} ha sido cancelado.')
+    return redirect('ventas:detalle_pedido', pedido_id=pedido.id)
+
+
 # ===============================================
 # REPORTES Y ESTADÍSTICAS
 # ===============================================
@@ -867,12 +904,21 @@ def estadisticas_ventas(request):
         pedidos = pedidos.filter(fecha_creacion__date__lte=fecha_hasta)
 
     total_ventas = pedidos.count()
-    monto_total = sum(
-        p.documentoventa.total 
-        for p in pedidos 
-        if hasattr(p, 'documentoventa') and p.documentoventa and p.documentoventa.total
-    )
 
+    # Nuevo cálculo: monto total = total documento - total notas de crédito asociadas
+    monto_total = 0
+    for p in pedidos:
+        doc = getattr(p, 'documentoventa', None)
+        if doc and doc.total:
+            # Sumar todas las notas de crédito asociadas a este documento
+            notas = getattr(doc, 'notas_credito', None)
+            if notas:
+                monto_nc = sum(nc.monto for nc in notas.all() if nc.monto)
+            else:
+                # Si no hay related_name, buscar por modelo
+                from apps.documentos.models import NotaCredito
+                monto_nc = sum(nc.monto for nc in NotaCredito.objects.filter(factura=doc))
+            monto_total += max(0, doc.total - monto_nc)
     context = {
         'pedidos': pedidos,
         'total_ventas': total_ventas,
@@ -880,7 +926,6 @@ def estadisticas_ventas(request):
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
     }
-
     return render(request, 'ventas/estadisticas_ventas.html', context)
 
 
@@ -933,13 +978,24 @@ def exportar_ventas_excel(request):
         total = pedido.documentoventa.total if hasattr(pedido, 'documentoventa') and pedido.documentoventa else 0
         total_str = f"${total:,.0f}".replace(",", ".") # Formato chileno
 
+        # Mostrar estado real del documento si corresponde
+        if hasattr(pedido, 'documentoventa') and pedido.documentoventa:
+            if pedido.documentoventa.estado == 'Devuelta':
+                estado_excel = 'Devuelta'
+            elif pedido.documentoventa.estado == 'Devuelta Parcial':
+                estado_excel = 'Parcialmente Devuelta'
+            else:
+                estado_excel = pedido.estado
+        else:
+            estado_excel = pedido.estado
+
         ws.append([
             pedido.id,
             pedido.cliente.razon_social,
             pedido.cliente.rut,
             pedido.usuario.get_full_name() or pedido.usuario.username,
             pedido.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
-            pedido.estado,
+            estado_excel,
             total_str 
         ])
 

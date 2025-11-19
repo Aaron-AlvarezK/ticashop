@@ -100,13 +100,22 @@
                                     <td>{{ pedido.usuario.get_full_name|default:pedido.usuario.username }}</td>
                                     <td>{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</td>
                                     <td><span class="badge bg-success">{{ pedido.estado }}</span></td>
-                                    <td class="text-end">
-                                        {% if pedido.documentoventa %}
-                                            ${{ pedido.documentoventa.total|floatformat:0|intcomma }}
-                                        {% else %}
-                                            <span class="text-muted">N/A</span>
-                                        {% endif %}
-                                    </td>
+                                        <td>
+                                            {% if pedido.documentoventa and pedido.documentoventa.estado == 'Devuelta' %}
+                                                <span class="badge bg-danger">Devuelta</span>
+                                            {% elif pedido.documentoventa and pedido.documentoventa.estado == 'Devuelta Parcial' %}
+                                                <span class="badge bg-warning text-dark">Parcialmente Devuelta</span>
+                                            {% else %}
+                                                <span class="badge bg-success">{{ pedido.estado }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {% if pedido.documentoventa %}
+                                                ${{ pedido.documentoventa.total|floatformat:0|intcomma }}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
                                     <td class="text-center">
                                         <a href="{% url 'ventas:detalle_pedido' pedido.id %}" class="btn btn-sm btn-primary">
                                             <i class="bi bi-eye"></i> Ver

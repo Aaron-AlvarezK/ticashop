@@ -4,9 +4,6 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="fas fa-box text-primary"></i> Gestión de Productos</h2>
         {% if request.user.rol == 'Administrador' %}
-        <a href="{% url 'productos:crear_producto' %}" class="btn btn-success">
-            <i class="fas fa-plus"></i> Nuevo Producto
-        </a>
         {% endif %}
     </div>
 

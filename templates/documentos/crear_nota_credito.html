@@ -44,7 +44,7 @@
       </thead>
       <tbody>
         {% for form in detalles_formset %}
-          <tr>
+          <tr data-cantidad-original="{{ form.initial.cantidad_original }}">
             <td>
               {{ form.producto_nombre }} 
               {{ form.producto_id }} 
@@ -78,14 +78,49 @@
     if (!form) return;
 
     form.addEventListener('submit', function(e){
-      // comprobación cliente: sumar inputs donde name termina en '-cantidad'
-      const qtyInputs = Array.from(document.querySelectorAll('input[name$="-cantidad"]'));
-      if (qtyInputs.length === 0) {
-        // si no hay inputs de cantidad, dejamos que el submit continúe (será validado en backend)
+      // Validación: fecha de emisión obligatoria
+      const fechaInput = document.querySelector('input[name="fecha_emision"]');
+      if (fechaInput && (!fechaInput.value || fechaInput.value.trim() === '')) {
+        e.preventDefault();
+        alert('Debes seleccionar una fecha de emisión para la nota de crédito.');
+        fechaInput.focus();
         return;
       }
+
+      // Validación: motivo obligatorio
+      const motivoInput = document.querySelector('textarea[name="motivo"], input[name="motivo"]');
+      if (motivoInput && (!motivoInput.value || motivoInput.value.trim() === '')) {
+        e.preventDefault();
+        alert('Debes indicar un motivo para la nota de crédito.');
+        motivoInput.focus();
+        return;
+      }
+      const qtyInputs = Array.from(document.querySelectorAll('input[name$="-cantidad"]'));
+      if (qtyInputs.length === 0) return;
+
       let total = 0;
-      qtyInputs.forEach(i => total += Number(i.value || 0));
+      const mismatches = [];
+
+      qtyInputs.forEach(i => {
+        const val = Number(i.value || 0);
+        const tr = i.closest('tr');
+        const original = tr ? Number(tr.dataset.cantidadOriginal || 0) : 0;
+        total += val;
+        if (val < 0) {
+          const nombre = tr ? (tr.querySelector('td') ? tr.querySelector('td').innerText.trim() : '') : '';
+          mismatches.push(`${nombre || 'Producto'}: cantidad inválida`);
+        } else if (val > original) {
+          const nombre = tr ? (tr.querySelector('td') ? tr.querySelector('td').innerText.trim() : '') : '';
+          mismatches.push(`${nombre || 'Producto'}: no puede ser mayor que ${original}`);
+        }
+      });
+
+      if (mismatches.length) {
+        e.preventDefault();
+        alert('Hay problemas con las cantidades:\n' + mismatches.join('\n'));
+        return;
+      }
+
       if (total <= 0) {
         e.preventDefault();
         alert('Debes indicar al menos un artículo con cantidad mayor a 0.');

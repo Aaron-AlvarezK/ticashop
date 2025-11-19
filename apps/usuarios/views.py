@@ -47,11 +47,14 @@ def dashboard(request):
         total_clientes = Cliente.objects.count()
         total_productos = Producto.objects.count()
         pedidos_hoy = Pedido.objects.filter(fecha_creacion__date=date.today()).count()
-        
+
         productos_stock_bajo = Producto.objects.filter(
             stock__lte=models.F('stock_minimo'),
             activo=True
         ).order_by('stock')[:10]
+
+        pedidos_devuelta = Pedido.objects.filter(documentoventa__estado='Devuelta').count()
+        pedidos_devuelta_parcial = Pedido.objects.filter(documentoventa__estado='Devuelta Parcial').count()
 
         context = {
             'usuario': usuario,
@@ -60,6 +63,8 @@ def dashboard(request):
             'total_productos': total_productos,
             'pedidos_hoy': pedidos_hoy,
             'productos_stock_bajo': productos_stock_bajo,
+            'pedidos_devuelta': pedidos_devuelta,
+            'pedidos_devuelta_parcial': pedidos_devuelta_parcial,
         }
         return render(request, 'dashboard/admin_dashboard.html', context)
 

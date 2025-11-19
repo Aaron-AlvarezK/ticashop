@@ -26,10 +26,16 @@
                     <p><strong>Vendedor:</strong> {{ pedido.usuario.get_full_name|default:pedido.usuario.username }}</p>
                     <p><strong>Fecha Creación:</strong> {{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</p>
                     <p><strong>Estado:</strong> 
-                        {% if pedido.estado == 'Pendiente' %}
+                        {% if documento and documento.estado == 'Devuelta' %}
+                            <span class="badge bg-danger">Devuelta</span>
+                        {% elif documento and documento.estado == 'Devuelta Parcial' %}
+                            <span class="badge bg-warning text-dark">Parcialmente Devuelta</span>
+                        {% elif pedido.estado == 'Pendiente' %}
                             <span class="badge bg-warning text-dark">{{ pedido.estado }}</span>
                         {% elif pedido.estado == 'Procesando' %}
                             <span class="badge bg-info">{{ pedido.estado }}</span>
+                        {% elif pedido.estado == 'Borrador' %}
+                            <span class="badge bg-success">{{ pedido.estado }}</span>
                         {% elif pedido.estado == 'Completado' %}
                             <span class="badge bg-success">{{ pedido.estado }}</span>
                         {% else %}
@@ -114,6 +120,12 @@
             <a href="{% url 'ventas:agregar_productos_pedido' pedido.id %}" class="btn btn-warning btn-lg me-2">
                 <i class="bi bi-pencil"></i> Editar Pedido
             </a>
+            <form method="post" action="{% url 'ventas:cancelar_pedido' pedido.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-lg me-2" onclick="return confirm('¿Deseas cancelar este pedido? Esta acción no se puede deshacer.')">
+                    <i class="bi bi-x-circle"></i> Cancelar Pedido
+                </button>
+            </form>
             <form method="post" action="{% url 'ventas:confirmar_pedido' pedido.id %}" style="display:inline;">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('¿Confirmar este pedido y generar documento?')">
@@ -127,6 +139,12 @@
                onclick="return confirm('¿Confirmar que el pedido ha sido enviado?');">
                 <i class="bi bi-truck"></i> Marcar como Enviado
             </a>
+            <form method="post" action="{% url 'ventas:cancelar_pedido' pedido.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-lg ms-2" onclick="return confirm('¿Deseas cancelar este pedido en proceso?')">
+                    <i class="bi bi-x-circle"></i> Cancelar Pedido
+                </button>
+            </form>
         
         {% elif pedido.estado == 'Enviado' %}
             <button class="btn btn-info btn-lg" disabled>

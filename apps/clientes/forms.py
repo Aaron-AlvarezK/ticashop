@@ -58,16 +58,11 @@ class ProveedorForm(forms.ModelForm):
         model = Proveedor
         fields = ['rut', 'razon_social', 'email_contacto', 'telefono']
         widgets = {
-            'rut': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 76.123.456-K'}),
+            'rut': forms.TextInput(attrs={'class': 'form-control'}),
             'razon_social': forms.TextInput(attrs={'class': 'form-control'}),
             'email_contacto': forms.EmailInput(attrs={'class': 'form-control'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
         }
-
-    def clean_rut(self):
-        """Aplica la validación de RUT al campo del formulario."""
-        rut = self.cleaned_data.get('rut')
-        return validar_rut(rut) # Llama a la función externa
 
 
 class ClienteForm(forms.ModelForm):

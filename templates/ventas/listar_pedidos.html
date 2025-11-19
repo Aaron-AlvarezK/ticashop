@@ -53,10 +53,16 @@
                             <td>{{ pedido.cantidad_items }}</td>
                             <td><strong>${{ pedido.total|floatformat:0 }}</strong></td>
                             <td>
-                                {% if pedido.estado == 'Pendiente' %}
+                                {% if pedido.documentoventa and pedido.documentoventa.estado == 'Devuelta' %}
+                                    <span class="badge bg-danger">Devuelta</span>
+                                {% elif pedido.documentoventa and pedido.documentoventa.estado == 'Devuelta Parcial' %}
+                                    <span class="badge bg-warning text-dark">Parcialmente Devuelta</span>
+                                {% elif pedido.estado == 'Pendiente' %}
                                     <span class="badge bg-warning text-dark">{{ pedido.estado }}</span>
                                 {% elif pedido.estado == 'Procesando' %}
                                     <span class="badge bg-info">{{ pedido.estado }}</span>
+                                {% elif pedido.estado == 'Borrador' %}
+                                    <span class="badge bg-success">{{ pedido.estado }}</span>
                                 {% elif pedido.estado == 'Completado' %}
                                     <span class="badge bg-success">{{ pedido.estado }}</span>
                                 {% elif pedido.estado == 'Cancelado' %}

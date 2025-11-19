@@ -2,6 +2,7 @@ from django.db import models
 
 class Pedido(models.Model):
     ESTADOS_PEDIDO = (
+        ('Borrador', 'Borrador'),
         ('Pendiente', 'Pendiente'),
         ('Procesando', 'Procesando'), 
         ('Enviado', 'Enviado'),

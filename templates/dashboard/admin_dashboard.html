@@ -4,7 +4,7 @@
     <h2><i class="fas fa-user-shield text-primary"></i> Panel de Administración</h2>
 
     <div class="row mt-4">
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
             <div class="card shadow-sm text-center border-top border-primary border-3">
                 <div class="card-body">
                     <h6 class="text-muted">USUARIOS</h6>
@@ -13,7 +13,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
             <div class="card shadow-sm text-center border-top border-success border-3">
                 <div class="card-body">
                     <h6 class="text-muted">CLIENTES</h6>
@@ -22,7 +22,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
             <div class="card shadow-sm text-center border-top border-info border-3">
                 <div class="card-body">
                     <h6 class="text-muted">PRODUCTOS</h6>
@@ -31,12 +31,30 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
+        <div class="col-md-2 mb-3">
             <div class="card shadow-sm text-center border-top border-warning border-3">
                 <div class="card-body">
                     <h6 class="text-muted">PEDIDOS HOY</h6>
                     <h3 class="fw-bold">{{ pedidos_hoy }}</h3>
                     <i class="fas fa-shopping-cart fa-2x text-warning"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mb-3">
+            <div class="card shadow-sm text-center border-top border-danger border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">DEVUELTOS</h6>
+                    <h3 class="fw-bold">{{ pedidos_devuelta }}</h3>
+                    <i class="fas fa-undo fa-2x text-danger"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 mb-3">
+            <div class="card shadow-sm text-center border-top border-warning border-3">
+                <div class="card-body">
+                    <h6 class="text-muted">PARCIAL DEVUELTOS</h6>
+                    <h3 class="fw-bold">{{ pedidos_devuelta_parcial }}</h3>
+                    <i class="fas fa-exchange-alt fa-2x text-warning"></i>
                 </div>
             </div>
         </div>
